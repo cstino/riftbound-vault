@@ -8,6 +8,7 @@ import { type Product, presetDeckId, productDeckToDeck } from '../lib/products'
 import { Match, deckCoverage, deckToSpec } from '../lib/game'
 import { useGame } from '../lib/gameStore'
 import type { Deck } from '../lib/types'
+import { CardText } from '../components/CardText'
 import './game.css'
 
 type Side = 'mine' | 'pc'
@@ -35,14 +36,15 @@ export function PlayVsPc() {
   const decks = useDeckChoices()
   const startGame = useGame((s) => s.start)
   const last = useGame((s) => s.decks)
-  const [side, setSide] = useState<Side>('mine')
+  // quale mazzo si sta scegliendo (si apre l'elenco), e passo della preparazione
+  const [picking, setPicking] = useState<Side | null>(null)
+  const [step, setStep] = useState<'decks' | 'field'>('decks')
+  const [fieldInfo, setFieldInfo] = useState<number | null>(null)
   const [pick, setPick] = useState<{ mine: string | null; pc: string | null }>(() => ({
     mine: last?.mine ?? presetDeckId('Zed'),
     pc: last?.pc ?? presetDeckId('Shen'),
   }))
   const [open, setOpen] = useState<string | null>(null)
-  // null = a caso come nel Duel (487.5); un numero = campo scelto come nel Match (488.5)
-  const [bf, setBf] = useState<number | null>(() => (last ? last.bf : 0))
 
   const rows = useMemo(
     () =>
@@ -56,7 +58,8 @@ export function PlayVsPc() {
   const pc = byId(pick.pc)
   const ready = !!mine?.cov.playable && !!pc?.cov.playable
 
-  function start() {
+  /** `bf`: campo scelto (488.5) oppure null per estrarlo a caso (487.5). */
+  function start(bf: number | null) {
     if (!mine || !pc) return
     const m = new Match([deckToSpec(mine.deck, db), deckToSpec(pc.deck, db)], ['Giocatore', 'PC'], 0, undefined, bf === null ? [null, null] : [bf, null])
     m.next()
@@ -65,11 +68,67 @@ export function PlayVsPc() {
   }
 
   function choose(id: string) {
-    setPick((p) => ({ ...p, [side]: id }))
-    if (side === 'mine') {
-      setSide('pc')
-      if (bf !== null) setBf(0)
-    }
+    if (!picking) return
+    setPick((p) => ({ ...p, [picking]: id }))
+    setPicking(null)
+  }
+
+  if (step === 'field' && mine) {
+    const fields = mine.deck.battlefields.map((id) => db.byId.get(id)).filter((c) => c != null)
+    const info = fieldInfo !== null ? fields[fieldInfo] : undefined
+    return (
+      <div className="setup">
+        <button type="button" className="link-more" onClick={() => setStep('decks')}>
+          ← Mazzi
+        </button>
+        <header className="setup-head">
+          <h1>Scegli il campo</h1>
+          <p className="muted">Ognuno sceglie uno dei suoi tre campi di battaglia, come nel Match (regola 488.5). Il PC sceglie il suo. Tocca un campo per vederne i dettagli.</p>
+        </header>
+        <div className="field-list">
+          {fields.map((c, i) => (
+            <motion.button
+              key={c.id}
+              type="button"
+              className="field-tile"
+              onClick={() => setFieldInfo(i)}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <img src={cardImage(c)} alt="" />
+              <span>{c.name}</span>
+            </motion.button>
+          ))}
+        </div>
+        <button type="button" className="btn field-random" onClick={() => start(null)}>
+          Estrai a caso (come nel Duel, regola 487.5)
+        </button>
+
+        <AnimatePresence>
+          {info && (
+            <motion.div key="info" className="sheet-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <button type="button" className="sheet-scrim" aria-label="Chiudi" onClick={() => setFieldInfo(null)} />
+              <motion.div className="sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 360, damping: 34 }}>
+                <span className="sheet-grip" aria-hidden />
+                <div className="sheet-body bf-sheet">
+                  <img className="bf-sheet-img" src={cardImage(info)} alt={info.name} />
+                  <h2>{info.name}</h2>
+                  {info.text && (
+                    <div className="obj-text">
+                      <CardText html={info.text} />
+                    </div>
+                  )}
+                  <button type="button" className="btn btn-primary field-go" onClick={() => start(fieldInfo)}>
+                    Gioca su questo campo
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
   }
 
   return (
@@ -79,21 +138,19 @@ export function PlayVsPc() {
       </Link>
       <header className="setup-head">
         <h1>Partita contro il PC</h1>
-        <p className="muted">
-          Una partita vera, 1 contro 1, con le regole del Core Rules ufficiale: turni, rune, catena, showdown, combattimenti e punti. Si possono usare solo i mazzi le cui carte sono già tutte implementate e
-          testate nel motore.
-        </p>
+        <p className="muted">Una partita 1 contro 1 con le regole del Core Rules ufficiale. Tocca una delle due card per scegliere il mazzo.</p>
       </header>
 
-      <div className="setup-versus">
-        {(['mine', 'pc'] as Side[]).map((s) => {
-          const r = s === 'mine' ? mine : pc
+      <div className="setup-versus versus-big">
+        {(['mine', 'pc'] as Side[]).map((sd) => {
+          const r = sd === 'mine' ? mine : pc
           return (
-            <button key={s} type="button" className={`versus-slot${side === s ? ' versus-on' : ''}`} onClick={() => setSide(s)}>
+            <motion.button key={sd} type="button" className="versus-slot" onClick={() => setPicking(sd)} whileTap={{ scale: 0.97 }}>
               <span className="versus-art">{r?.champ && <img src={cardImage(r.champ)} alt="" />}</span>
-              <span className="versus-who">{s === 'mine' ? 'Il tuo mazzo' : 'Mazzo del PC'}</span>
+              <span className="versus-who">{sd === 'mine' ? 'Tu' : 'PC'}</span>
               <strong>{r?.deck.name ?? 'Scegli'}</strong>
-            </button>
+              <span className="versus-change tiny">Cambia mazzo</span>
+            </motion.button>
           )
         })}
         <span className="versus-vs" aria-hidden>
@@ -101,89 +158,55 @@ export function PlayVsPc() {
         </span>
       </div>
 
-      {mine && (
-        <section className="bf-pick">
-          <div className="bf-pick-head">
-            <strong>Il tuo campo di battaglia</strong>
-            <span className="chips">
-              <button type="button" className="chip" aria-pressed={bf !== null} onClick={() => setBf(bf ?? 0)}>
-                Lo scelgo io
-              </button>
-              <button type="button" className="chip" aria-pressed={bf === null} onClick={() => setBf(null)}>
-                Casuale
-              </button>
-            </span>
-          </div>
-          <p className="tiny">
-            {bf === null
-              ? 'Come nel Duel: ognuno estrae a caso uno dei suoi tre campi (regola 487.5).'
-              : 'Come nel Match: ognuno sceglie uno dei suoi tre campi (regola 488.5). Il PC sceglie il suo.'}
-          </p>
-          {bf !== null && (
-            <div className="bf-options">
-              {mine.deck.battlefields.map((id, i) => {
-                const c = db.byId.get(id)
-                return (
-                  c && (
-                    <button key={id} type="button" className={`bf-option${bf === i ? ' bf-option-on' : ''}`} onClick={() => setBf(i)}>
-                      <img src={cardImage(c)} alt="" loading="lazy" />
-                      <span>{c.name}</span>
-                    </button>
-                  )
-                )
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-      <p className="setup-help">
-        Stai scegliendo: <strong>{side === 'mine' ? 'il tuo mazzo' : 'il mazzo del PC'}</strong>
-      </p>
-
-      <ul className="deck-choices">
-        {rows.map(({ deck, cov, champ }, i) => {
-          const pct = Math.round((cov.done / Math.max(1, cov.total)) * 100)
-          const selected = pick[side] === deck.id
-          return (
-            <motion.li key={deck.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }}>
-              <div className={`deck-choice${selected ? ' deck-choice-on' : ''}${cov.playable ? '' : ' deck-choice-off'}`}>
-                <button type="button" className="deck-choice-main" disabled={!cov.playable} onClick={() => choose(deck.id)}>
-                  <span className="deck-choice-art">{champ && <img src={cardImage(champ)} alt="" loading="lazy" />}</span>
-                  <span className="deck-choice-body">
-                    <strong>{deck.name}</strong>
-                    <span className="cov-bar" aria-hidden>
-                      <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: pct / 100 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
-                    </span>
-                    <span className="tiny">
-                      {cov.playable ? 'Giocabile: tutte le carte implementate' : `${pct}% delle carte implementate · ne mancano ${cov.missing.length}`}
-                    </span>
-                  </span>
-                  {selected && <span className="deck-choice-check">✓</span>}
-                </button>
-                {!cov.playable && cov.missing.length > 0 && (
-                  <button type="button" className="deck-choice-more" onClick={() => setOpen(open === deck.id ? null : deck.id)} aria-expanded={open === deck.id}>
-                    {open === deck.id ? 'Nascondi' : 'Quali mancano'}
-                  </button>
-                )}
-              </div>
-              <AnimatePresence>
-                {open === deck.id && (
-                  <motion.p className="deck-missing" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-                    {cov.missing.join(' · ')}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </motion.li>
-          )
-        })}
-      </ul>
-
       <div className="setup-go">
-        <button type="button" className="btn btn-primary" disabled={!ready} onClick={start}>
-          {ready ? `Inizia: ${mine!.deck.name} contro ${pc!.deck.name}` : 'Scegli due mazzi giocabili'}
+        <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => setStep('field')}>
+          {ready ? 'Inizia' : 'Scegli due mazzi giocabili'}
         </button>
       </div>
+
+      <AnimatePresence>
+        {picking && (
+          <motion.div key="picker" className="sheet-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <button type="button" className="sheet-scrim" aria-label="Chiudi" onClick={() => setPicking(null)} />
+            <motion.div className="sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 360, damping: 34 }}>
+              <span className="sheet-grip" aria-hidden />
+              <div className="sheet-body">
+                <h2>{picking === 'mine' ? 'Il tuo mazzo' : 'Mazzo del PC'}</h2>
+                <p className="tiny muted">Si giocano solo i mazzi con tutte le carte implementate nel motore.</p>
+                <ul className="deck-choices">
+                  {rows.map(({ deck, cov, champ }) => {
+                    const pct = Math.round((cov.done / Math.max(1, cov.total)) * 100)
+                    const selected = pick[picking] === deck.id
+                    return (
+                      <li key={deck.id}>
+                        <div className={`deck-choice${selected ? ' deck-choice-on' : ''}${cov.playable ? '' : ' deck-choice-off'}`}>
+                          <button type="button" className="deck-choice-main" disabled={!cov.playable} onClick={() => choose(deck.id)}>
+                            <span className="deck-choice-art">{champ && <img src={cardImage(champ)} alt="" loading="lazy" />}</span>
+                            <span className="deck-choice-body">
+                              <strong>{deck.name}</strong>
+                              <span className="cov-bar" aria-hidden>
+                                <span style={{ transform: `scaleX(${pct / 100})` }} />
+                              </span>
+                              <span className="tiny">{cov.playable ? 'Giocabile' : `${pct}% implementato · ne mancano ${cov.missing.length}`}</span>
+                            </span>
+                            {selected && <span className="deck-choice-check">✓</span>}
+                          </button>
+                          {!cov.playable && cov.missing.length > 0 && (
+                            <button type="button" className="deck-choice-more" onClick={() => setOpen(open === deck.id ? null : deck.id)} aria-expanded={open === deck.id}>
+                              {open === deck.id ? 'Nascondi' : 'Quali'}
+                            </button>
+                          )}
+                        </div>
+                        {open === deck.id && <p className="deck-missing">{cov.missing.join(' · ')}</p>}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
