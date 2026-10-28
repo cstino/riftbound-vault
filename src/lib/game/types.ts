@@ -32,6 +32,8 @@ export interface Mod {
   ganking?: boolean
   /** Tactical Retreat: la prossima morte in questo turno è sostituita. */
   retreat?: boolean
+  /** Dura solo fino alla fine del combattimento ("this combat"). */
+  combat?: boolean
 }
 
 export interface Obj {
@@ -63,6 +65,8 @@ export interface Obj {
   inCombat: boolean
   /** Temporary dato da un effetto (816). */
   temporary?: boolean
+  /** Ultimo stato Mighty osservato, per "becomes Mighty" (709). */
+  mighty?: boolean
 }
 
 export interface Pool {

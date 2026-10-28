@@ -224,12 +224,12 @@ register('Reckless Innovator', {
       const opts = [{ label: 'Gioca un token Gold esausto', ai: 1 }, ...(canDraw ? [{ label: 'Paga 1 Chaos per pescare 1', ai: 0.5 }] : [])]
       const r = yield* choose(g, ctx.p, 'Reckless Innovator: scegli un effetto', opts, 1, 1, { rule: '355.3' })
       ctx.data.mode = r?.[0] ?? 0
+      // 740.4.a.2: "Pay [C] to draw 1" si paga alla finalizzazione
+      if (ctx.data.mode === 1) pay(g, ctx.p, { energy: 0, power: [['Chaos']] })
       return true
     },
     resolve: function* (g, ctx) {
       if (ctx.data.mode === 0) return yield* goldExhausted(g, ctx)
-      if (!canPay(g, ctx.p, { energy: 0, power: [['Chaos']] })) return
-      pay(g, ctx.p, { energy: 0, power: [['Chaos']] })
       yield* draw(g, ctx.p, 1)
     },
   },

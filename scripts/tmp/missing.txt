@@ -1,28 +1,5 @@
-== Fiora (Champion Deck: Fiora) mancano 24
-2x Fiora, Peerless [Champion Unit/champion] E3 P1 M3 ::  When I attack or defend one on one, double my Might this combat. 
-2x Jaull-Fish [Unit/main] E7 P2 M6 ::  [Accelerate] (You may pay :rb_energy_1::rb_rune_body: as an additional cost to have me enter ready.) I cost :rb_energy_2: less for each of your [Mighty] units. (A unit is Mighty while it has 5+ :rb_might:.) 
-2x Laurent Duelist [Unit/main] E4 Pnull M3 ::  [Assault 2] (+2 :rb_might: while I'm an attacker.) 
-2x Lucian, Merciless [Champion Unit/champion] E3 Pnull M3 ::  [Weaponmaster] (When you play me, you may [Equip] one of your Equipment to me for :rb_rune_rainbow: less, even if it's already attached.) The first time I conquer each turn, ready me. 
-2x Veteran Poro [Unit/main] E2 Pnull M2 ::  [Weaponmaster] (When you play me, you may [Equip] one of your Equipment to me for :rb_rune_rainbow: less, even if it's already attached.) 
-2x Pit Rookie [Unit/main] E2 Pnull M2 ::  When you play me, buff another friendly unit. (If it doesn't have a buff, it gets a +1 :rb_might: buff.) 
-2x Dauntless Vanguard [Unit/main] E4 P1 M4 ::  You may play me to an occupied enemy battlefield. 
-2x Unsung Hero [Unit/main] E2 Pnull M2 ::  [Deathknell] — If I was [Mighty], draw 2. (When I die, get the effect. I'm Mighty while I have 5+ :rb_might:.) 
-2x Royal Guard [Unit/main] E4 Pnull M2 ::  When you play me, play a 2 :rb_might: Sand Soldier unit token here. 
-1x Fiora, Worthy [Champion Unit/champion] E3 Pnull M3 ::  When a unit you control becomes [Mighty], you may pay :rb_rune_order: to ready it. (A unit is Mighty while it has 5+ :rb_might:.) 
-1x Yone, Blademaster [Champion Unit/champion] E5 P1 M5 ::  [Weaponmaster] (When you play me, you may [Equip] one of your Equipment to me for :rb_rune_rainbow: less, even if it's already attached.) When I conquer an open battlefield, deal damage equal to my Might to an enemy unit in a base. 
-2x Punch First [Spell/main] E1 P2 Mnull ::  [Action] (Play on your turn or in showdowns.) Give a unit +5 :rb_might: this turn. 
-3x Strike Down [Spell/main] E3 P1 Mnull ::  Choose an equipped friendly unit. It deals damage equal to its Might to an enemy unit. Then detach an Equipment from it. 
-2x Vengeance [Spell/main] E4 P2 Mnull ::  Kill a unit. 
-1x Riposte [Signature Spell/main] E2 P2 Mnull ::  [Reaction] (Play any time, even before spells and abilities resolve.) Choose a friendly unit and a spell. Counter that spell and give that unit +:rb_might: equal to that spell's Energy cost this turn. 
-2x Show of Strength [Spell/main] E2 P1 Mnull ::  [Reaction] (Play any time, even before spells and abilities resolve.) Draw 1 for each of your [Mighty] units. (A unit is Mighty while it has 5+ :rb_might:.) 
-3x B.F. Sword [Gear/main] E4 Pnull M3 ::  [Equip] :rb_rune_order: (:rb_rune_order:: Attach this to a unit you control.) 
-3x Warmog's Armor [Gear/main] E1 Pnull M1 ::  [Equip] :rb_rune_body: (:rb_rune_body:: Attach this to a unit you control.) 
-1x Sacred Shears [Gear/main] E2 P1 M1 ::  [Equip] :rb_rune_order: (:rb_rune_order:: Attach this to a unit you control.) 
-3x Doran's Blade [Gear/main] E2 Pnull M2 ::  [Equip] :rb_rune_body: (:rb_rune_body:: Attach this to a unit you control.) 
-1x Fiora - Grand Duelist [Legend/legend] Enull Pnull Mnull ::  When one of your units becomes [Mighty], you may exhaust me to channel 1 rune exhausted. (A unit is Mighty while it has 5+ :rb_might:.) 
-1x Ornn's Forge [Battlefield/battlefield] Enull Pnull Mnull ::  While you control this battlefield, the first friendly non-token gear played each turn costs :rb_energy_1: less. 
-1x Veiled Temple [Battlefield/battlefield] Enull Pnull Mnull ::  When you conquer here, you may ready a friendly gear. If it's an Equipment, you may detach it. 
-1x Sunken Temple [Battlefield/battlefield] Enull Pnull Mnull ::  When you conquer here with one or more [Mighty] units, you may pay :rb_energy_1: to draw 1. (A unit is Mighty while it has 5+ :rb_might:.) 
+== Fiora (Champion Deck: Fiora) mancano 0
+
 == Vex (Champion Deck: Vex) mancano 27
 1x Vex - Gloomist [Legend/legend] Enull Pnull Mnull ::  When you or an ally hold, you may exhaust me to draw 1. 
 1x Vex, Apathetic [Champion Unit/champion] E4 Pnull M4 ::  [Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.) When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn. (It doesn't deal combat damage this turn.) 

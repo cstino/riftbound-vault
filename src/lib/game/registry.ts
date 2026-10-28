@@ -135,6 +135,14 @@ export interface CardImpl {
   facedownPlays?: TrigDef
   /** Campi: "plays a unit or gear here" (ctx.data.unit). */
   bfPermPlayed?: TrigDef
+  /** "When I defend". */
+  defend?: TrigDef
+  /** "When a unit you control becomes Mighty" (709), di Legend e permanenti (ctx.data.unit). */
+  allyMighty?: TrigDef
+  /** Campi: "the first friendly non-token gear played each turn costs [1] less" (Ornn's Forge). */
+  bfGearDiscount?: number
+  /** Posizioni in più dove giocare l'unità ("You may play me to an occupied enemy battlefield"). */
+  extraLocs?: (g: Game, p: PID) => LocId[]
   /** Campi: "When you defend here". */
   bfDefend?: TrigDef
   keywords?: (g: Game, self: Obj) => Partial<Keywords>

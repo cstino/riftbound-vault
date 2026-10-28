@@ -412,7 +412,7 @@ export function* kill(g: Game, list: Obj[], why: string, rule = '429'): Gen {
     const def = implOf(o.card.name).deathknell
     if (def && (!def.when || def.when(g, o))) {
       const others = friendlyAt(g, o.controller, o.loc).filter((x) => x !== o)
-      queueTrig(g, def, { ...o }, o.controller, { alone: others.length === 0 })
+      queueTrig(g, def, { ...o }, o.controller, { alone: others.length === 0, mighty: might(g, o) >= 5 }) // 708
     }
   }
   log(g, `Muo${list.length > 1 ? 'iono' : 're'}: ${list.map((o) => o.card.name).join(', ')} (${why}).`, rule)
@@ -926,6 +926,18 @@ export function* cleanup(g: Game): Gen {
       continue
     }
     let changed = false
+    // 709: "becomes Mighty" quando la Might passa da meno di 5 a 5 o più
+    for (const o of units(g)) {
+      const now = might(g, o) >= 5
+      if (o.mighty === false && now) {
+        log(g, `${o.card.name} diventa Mighty.`, '709', o.controller)
+        for (const x of [g.objs.get(g.players[o.controller].legend)!, ...board(g).filter((x) => x.controller === o.controller)]) {
+          const def = implOf(x.card.name).allyMighty
+          if (def) queueTrig(g, def, x, o.controller, { unit: o })
+        }
+      }
+      o.mighty = now
+    }
     const open = g.chain.length === 0 && g.triggers.length === 0
     // 323.5: si perde il controllo dei campi senza proprie unità
     for (const bf of g.bfs) {
@@ -989,7 +1001,7 @@ export function* cleanup(g: Game): Gen {
 }
 
 function fireRoleTrigger(g: Game, o: Obj) {
-  const def = o.role === 'attacker' ? implOf(o.card.name).attack : undefined
+  const def = o.role === 'attacker' ? implOf(o.card.name).attack : implOf(o.card.name).defend
   if (def) queueTrig(g, def, o, o.controller) // 383.4.e
   const x = o.role === 'attacker' ? kw(g, o).disarm : 0
   if (x > 0) queueTrig(g, disarmTrig(x), o, o.controller) // 831.1.d.1: un solo trigger col valore totale
@@ -1082,7 +1094,7 @@ function* runShowdown(g: Game, loc: LocId, combat: boolean): Gen {
       log(g, `${pname(g, p1)} prende il controllo di ${bfName(g, bf.loc)}.`, '348.2.a', p1)
       bf.contested = null
       g.showdown = null
-      yield* scoreBf(g, p1, loc, 'conquer')
+      yield* scoreBf(g, p1, loc, 'conquer', { open: true }) // conquistato senza combattimento: era libero (170.11.c)
     }
   }
   bf.contested = null
@@ -1195,6 +1207,7 @@ function* combatResolution(g: Game): Gen {
     }
     o.role = null
     o.inCombat = false
+    o.mods = o.mods.filter((m) => !m.combat) // "this combat"
   }
   g.showdown = null
   g.excess = [0, 0]
@@ -1203,7 +1216,7 @@ function* combatResolution(g: Game): Gen {
 
 // ---------------------------------------------------------------- punteggio (469-474)
 
-export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold'): Gen {
+export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold', opts: { open?: boolean } = {}): Gen {
   const pl = g.players[p]
   const bf = bfAt(g, loc)
   if (pl.scored.includes(loc)) return // 472
@@ -1220,7 +1233,7 @@ export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold'): 
   // 473.2: effetti di conquista o di tenuta
   for (const o of board(g).filter((x) => x.controller === p && x.loc === loc)) {
     const def = how === 'conquer' ? implOf(o.card.name).conquer : implOf(o.card.name).hold
-    if (def) queueTrig(g, def, o, p)
+    if (def) queueTrig(g, def, o, p, { open: !!opts.open })
   }
   const bdef = how === 'conquer' ? implOf(bf.card.name).bfConquer : implOf(bf.card.name).bfHold
   if (bdef) {
@@ -1262,6 +1275,8 @@ export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ct
     out.energy += impl.repeat.energy ?? 0 // 820.1.c.1
     for (let i = 0; i < (impl.repeat.power ?? 0); i++) out.power.push(ANY)
   }
+  if (isGear(o) && !o.token && !g.turnFlags.has(`gear-${p}`))
+    for (const b of g.bfs) if (b.controller === p) out.energy = Math.max(0, out.energy - (implOf(b.card.name).bfGearDiscount ?? 0)) // Ornn's Forge
   const d = impl.discount?.(g, p, o)
   if (d) {
     out.energy = Math.max(0, out.energy - (d.energy ?? 0)) // 356.6
@@ -1310,6 +1325,7 @@ export function unitLocs(g: Game, p: PID, o: Obj, src: PlaySource, w: Window): L
     for (const b of g.bfs) if (b.controller === p) out.add(b.loc)
   }
   if (s.ambush) for (const b of g.bfs) if (friendlyAt(g, p, b.loc).length) out.add(b.loc)
+  if (speedOk(cardSpeed(o, src), w)) for (const l of implOf(o.card.name).extraLocs?.(g, p) ?? []) out.add(l)
   return [...out]
 }
 
@@ -1522,6 +1538,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       perm.card,
     )
     applyContested(g, perm)
+    if (isGear(perm) && !perm.token) g.turnFlags.add(`gear-${p}`)
     if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt, showed: ctx.data.showed })
     firePlayed(g, perm, p)
     if (isBf(loc)) {
@@ -1668,13 +1685,35 @@ export function abilitiesOf(o: Obj): AbilityDef[] {
       resolve: function* (g, ctx) {
         const u = ctx.data.unit as Obj
         if (!alive(g, ctx.self) || !alive(g, u) || u.controller !== ctx.p) return
-        ctx.self.attachedTo = u.uid
-        ctx.self.loc = u.loc
-        log(g, `${ctx.self.card.name} si attacca a ${u.card.name}.`, '435', ctx.p)
+        attach(g, ctx.self, u)
       },
     })
   }
   return out
+}
+
+/** Costo di Equip della carta per una data unità (818.1.c.4), o null se non ha Equip (821.1.c.4). */
+export function equipCostOf(g: Game, gear: Obj, unit: Obj | null): Cost | null {
+  const impl = implOf(gear.card.name)
+  if (impl.equipCost) return impl.equipCost(g, gear, unit)
+  return impl.equip ? { energy: 0, power: impl.equip.map((d) => [d]) } : null
+}
+
+/** Attacca un equipaggiamento a un'unità (435), staccandolo da quella precedente. */
+export function attach(g: Game, gear: Obj, u: Obj) {
+  gear.attachedTo = u.uid
+  gear.loc = u.loc
+  log(g, `${gear.card.name} si attacca a ${u.card.name}.`, '435', u.controller)
+}
+
+/** Counter: l'elemento non fa nulla e la carta va nel trash (426.1.a). */
+export function counter(g: Game, id: number) {
+  const i = g.chain.findIndex((c) => c.id === id)
+  if (i < 0) return
+  const [item] = g.chain.splice(i, 1)
+  log(g, `${item.label} viene annullata (Counter).`, '426.1.a', item.controller)
+  const c = item.card !== undefined ? g.objs.get(item.card) : undefined
+  if (c && c.zone === 'chain') moveZone(g, c, 'trash') // 426.1.a.1
 }
 
 function* activate(g: Game, p: PID, o: Obj, ab: AbilityDef): Gen<boolean> {
