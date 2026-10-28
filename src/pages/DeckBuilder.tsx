@@ -368,6 +368,7 @@ function CoreCard({ card, label, note, owned }: { card: Card; label: string; not
 
 function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => void }) {
   const db = useDb()
+  const location = useLocation()
   const names = useOwnedNames()
   const legend = db.byId.get(deck.legendId!)!
   const [pickBf, setPickBf] = useState(false)
@@ -465,11 +466,21 @@ function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => 
             const b = db.byId.get(bid)
             if (!b) return null
             return (
-              <button key={bid} type="button" className="bf" onClick={() => edit((d) => void (d.battlefields = d.battlefields.filter((x) => x !== bid)))} aria-label={`Togli ${b.name}`}>
-                <img src={cardImage(b)} alt="" />
-                <span>{b.name}</span>
-                <span className="bf-x">✕</span>
-              </button>
+              // Toccando la carta si aprono i dettagli; solo la ✕ la toglie dal mazzo
+              <div key={bid} className="bf">
+                <Link to={`/carta/${b.id}`} state={{ background: location }} className="bf-open">
+                  <img src={cardImage(b)} alt="" />
+                  <span>{b.name}</span>
+                </Link>
+                <button
+                  type="button"
+                  className="bf-x"
+                  onClick={() => edit((d) => void (d.battlefields = d.battlefields.filter((x) => x !== bid)))}
+                  aria-label={`Togli ${b.name} dal mazzo`}
+                >
+                  ✕
+                </button>
+              </div>
             )
           })}
           {deck.battlefields.length < BATTLEFIELDS_REQUIRED && (

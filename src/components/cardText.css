@@ -10,46 +10,92 @@
   font-style: italic;
 }
 
+/*
+ * Etichette delle parole chiave come sono stampate sulle carte: parallelogramma inclinato,
+ * maiuscolo corsivo bianco. Il colore dipende dalla parola chiave (regola 801.2: non ha
+ * effetti sul gioco). Colori misurati sulle immagini ufficiali delle carte.
+ */
 .kw {
+  --kw-bg: #707070;
+  position: relative;
   display: inline-block;
-  padding: 1px 9px 2px;
-  margin: 0 1px;
-  border-radius: 999px;
+  padding: 1px 10px 1px 8px;
+  margin: 0 2px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-style: normal;
-  font-size: 0.86em;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-  vertical-align: 0.06em;
+  font-style: italic;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.55;
+  vertical-align: 0.08em;
   color: #fff;
-  background: linear-gradient(135deg, var(--magenta), var(--violet));
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.18) inset, 0 4px 14px -6px var(--magenta);
-  transition: transform 160ms var(--ease-out), box-shadow 160ms;
+  background: var(--kw-bg);
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+  transition: transform 160ms var(--ease-out), filter 160ms;
 }
 
 button.kw:hover {
+  filter: brightness(1.15);
   transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3) inset, 0 6px 18px -6px var(--magenta);
 }
 
 button.kw:active {
   transform: scale(0.96);
 }
 
-/* Le parole che danno permessi di tempo hanno un colore proprio, come il "ciano" della reference */
+/* Verde-acqua: permessi di tempo e modi di giocare la carta */
+.kw-accelerate,
 .kw-action,
 .kw-reaction,
+.kw-hidden,
+.kw-legion,
+.kw-quick-draw,
 .kw-ambush,
-.kw-quick-draw {
-  background: linear-gradient(135deg, #1aa6c4, var(--cyan));
-  color: var(--ink-0);
-  box-shadow: 0 4px 14px -6px var(--cyan);
+.kw-repeat,
+.kw-flow,
+.kw-deploy,
+.kw-show-off {
+  --kw-bg: #24705c;
+}
+
+/* Rosa: combattimento */
+.kw-assault,
+.kw-shield,
+.kw-tank,
+.kw-backline,
+.kw-disarm {
+  --kw-bg: #c83868;
+}
+
+/* Verde lime */
+.kw-deathknell,
+.kw-deflect,
+.kw-ganking,
+.kw-temporary,
+.kw-hunt,
+.kw-level,
+.kw-empowered {
+  --kw-bg: #94b034;
+}
+
+/* Grigio (default): buff, vision, equip, weaponmaster, empower, burn, mighty, add, stun, predict, unique */
+
+/* Voci del glossario che sulle carte non hanno un'etichetta stampata */
+.kw-xp,
+.kw-burn-out,
+.kw-channel,
+.kw-banish,
+.kw-recycle {
+  --kw-bg: transparent;
+  color: var(--text);
+  clip-path: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--line-strong) inset;
 }
 
 .kw-plain {
-  background: var(--ink-3);
-  box-shadow: none;
+  --kw-bg: #707070;
 }
 
 .kw-sep {
