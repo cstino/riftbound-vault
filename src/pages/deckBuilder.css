@@ -609,3 +609,14 @@
   margin-top: 3px;
   font-size: 10.5px;
 }
+
+/* Uso nelle liste di torneo ben piazzate */
+.usage {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.usage-hi {
+  color: var(--cyan);
+  font-weight: 700;
+}

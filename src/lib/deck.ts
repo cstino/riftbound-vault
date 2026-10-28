@@ -12,7 +12,6 @@ import {
   isToken,
   legendChampionTag,
 } from './data'
-import { GLOSSARY, glossaryIdForTerm } from '../data/glossary'
 
 export const MAIN_MIN = 40
 export const RUNES_REQUIRED = 12
@@ -140,102 +139,7 @@ export function validateDeck(deck: Deck, db: CardDb): Issue[] {
 }
 
 // ---------------------------------------------------------------------------
-// Suggerimenti
-//
-// Non sono regole: confrontano testo e tag delle carte con quelli del mazzo e spiegano sempre il motivo.
-
-/** Parole chiave (voci del glossario) presenti nel testo di una carta. */
-export function keywordsOf(c: Card): string[] {
-  const out = new Set<string>()
-  for (const m of (c.text ?? '').matchAll(/\[([^\]]+)\]/g)) {
-    const id = glossaryIdForTerm(m[1])
-    // Empowered dipende da Empower: per i temi del mazzo contano come una cosa sola.
-    // Action e Reaction dicono solo quando si gioca la carta: non sono un tema.
-    if (id && id !== 'action' && id !== 'reaction') out.add(id === 'empowered' ? 'empower' : id)
-  }
-  return [...out]
-}
-
-const plain = (c: Card) => (c.text ?? '').replace(/<[^>]+>/g, ' ').replace(/\([^)]*\)/g, ' ')
-
-/** Tag citati nel testo (es. "your Mechs"), escluse le spiegazioni tra parentesi. */
-function tagsMentioned(c: Card, db: CardDb) {
-  const text = plain(c)
-  return [...db.tags].filter((t) => t.length > 2 && new RegExp(`\\b${t}s?\\b`).test(text))
-}
-
-export interface Theme {
-  key: string
-  label: string
-  kind: 'keyword' | 'tag'
-  weight: number
-}
-
-/** Temi del mazzo: parole chiave e tag che ricorrono nella Legend, nel campione e nelle carte scelte. */
-export function deckThemes(deck: Deck, db: CardDb): Theme[] {
-  const counts = new Map<string, Theme>()
-  const bump = (key: string, label: string, kind: Theme['kind'], w: number) => {
-    const t = counts.get(key) ?? { key, label, kind, weight: 0 }
-    t.weight += w
-    counts.set(key, t)
-  }
-  const core = [deck.legendId, deck.championId].map((id) => (id ? db.byId.get(id) : undefined))
-  const inDeck = Object.entries(deck.main).map(([id, q]) => [db.byId.get(id), q] as const)
-  for (const c of core) {
-    if (!c) continue
-    for (const k of keywordsOf(c)) bump(`k:${k}`, GLOSSARY.find((g) => g.id === k)!.term, 'keyword', 3)
-    for (const t of tagsMentioned(c, db)) bump(`t:${t}`, t, 'tag', 3)
-  }
-  for (const [c, q] of inDeck) {
-    if (!c) continue
-    for (const k of keywordsOf(c)) bump(`k:${k}`, GLOSSARY.find((g) => g.id === k)!.term, 'keyword', q * 0.5)
-    for (const t of tagsMentioned(c, db)) bump(`t:${t}`, t, 'tag', q)
-  }
-  return [...counts.values()].filter((t) => t.weight >= 1.5).sort((a, b) => b.weight - a.weight)
-}
-
-export interface Suggestion {
-  card: Card
-  score: number
-  reasons: string[]
-}
-
-interface FitCtx {
-  tag: string | null
-  themes: Theme[]
-  focus: Set<string>
-}
-
-/**
- * Quanto una carta è legata al mazzo (euristica, non una regola): tag del campione e temi
- * ricorrenti di parole chiave e tag. Le ragioni spiegano il punteggio.
- */
-function fitOf(c: Card, db: CardDb, ctx: FitCtx): { score: number; reasons: string[] } {
-  let score = 0
-  const reasons: string[] = []
-  if (ctx.tag && c.tags.includes(ctx.tag)) {
-    score += isSignature(c) ? 6 : 4
-    reasons.push(isSignature(c) ? `Signature di ${ctx.tag}` : `Ha il tag ${ctx.tag}, come la tua Legend`)
-  }
-  const kws = keywordsOf(c)
-  const ctags = new Set([...c.tags, ...tagsMentioned(c, db)])
-  for (const t of ctx.themes) {
-    const hit = t.kind === 'keyword' ? kws.includes(t.key.slice(2)) : ctags.has(t.label)
-    if (!hit) continue
-    const boost = ctx.focus.has(t.key) ? 3 : 1
-    score += Math.min(t.weight, 6) * 0.6 * boost
-    reasons.push(t.kind === 'keyword' ? `Usa ${t.label}, un tema del mazzo` : `Legata al tema ${t.label}`)
-  }
-  for (const f of ctx.focus) {
-    if (ctx.themes.some((t) => t.key === f)) continue
-    const hit = f.startsWith('k:') ? kws.includes(f.slice(2)) : ctags.has(f.slice(2))
-    if (hit) {
-      score += 4
-      reasons.push(`Tema scelto da te: ${f.startsWith('k:') ? GLOSSARY.find((g) => g.id === f.slice(2))?.term : f.slice(2)}`)
-    }
-  }
-  return { score, reasons }
-}
+// Aiuti per i suggerimenti
 
 /** Una carta che si può mettere nel mazzo principale di questa Legend (103.2, 103.3). */
 function legalMain(c: Card, identity: Domain[], tag: string | null) {
@@ -262,84 +166,39 @@ function ownedNames(db: CardDb, owned: Record<string, number>) {
   return m
 }
 
-export function suggestCards(
+/**
+ * Carte del mazzo tra cui scegliere quella da togliere: prima quelle non legali con questa Legend,
+ * poi le meno usate nelle liste di torneo ben piazzate della stessa Legend (se ci sono dati), a
+ * parità quelle che non possiedi. Il campione scelto resta sempre con almeno una copia (103.3.a).
+ */
+export function replaceOptions(
   deck: Deck,
   db: CardDb,
-  opts: { focus?: string[]; owned?: Record<string, number>; onlyOwned?: boolean; limit?: number } = {},
-): Suggestion[] {
-  const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
-  if (!legend) return []
-  const identity = legend.domains
-  const tag = legendChampionTag(legend, db)
-  const ctx: FitCtx = { tag, themes: deckThemes(deck, db), focus: new Set(opts.focus ?? []) }
-  const inDeckNames = namesIn(deck, db)
-  // Curva dei costi in Energia del mazzo attuale
-  const curve = new Map<number, number>()
-  for (const [id, q] of Object.entries(deck.main)) {
-    const e = db.byId.get(id)?.energy
-    if (e != null) curve.set(Math.min(e, 7), (curve.get(Math.min(e, 7)) ?? 0) + q)
-  }
-  const deckSize = countOf(deck.main)
-  const ownedByName = ownedNames(db, opts.owned ?? {})
-
-  const seen = new Set<string>()
-  const out: Suggestion[] = []
-  for (const c of db.cards) {
-    if (!isBasePrinting(c) || seen.has(c.name) || !legalMain(c, identity, tag)) continue
-    if (isChampionUnit(c) && c.id === deck.championId) continue
-    const have = inDeckNames.get(c.name) ?? 0
-    if (have >= (isUnique(c) ? 1 : MAX_COPIES)) continue
-    const ownedQty = ownedByName.get(c.name) ?? 0
-    if (opts.onlyOwned && ownedQty === 0) continue
-    seen.add(c.name)
-
-    let { score, reasons } = fitOf(c, db, ctx)
-    if (c.energy != null && deckSize >= 10) {
-      const bucket = Math.min(c.energy, 7)
-      const share = (curve.get(bucket) ?? 0) / deckSize
-      if (bucket >= 1 && bucket <= 4 && share < 0.1) {
-        score += 1
-        reasons = [...reasons, `Nel mazzo hai poche carte da ${bucket} Energia`]
-      }
-    }
-    if (ownedQty > 0) {
-      score += 0.75
-      reasons = [...reasons, `Ne possiedi ${ownedQty}`]
-    }
-    if (score > 0.8) out.push({ card: c, score, reasons })
-  }
-  return out.sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 40)
-}
-
-/**
- * Carte del mazzo tra cui scegliere quella da togliere. Solo fatti, nessun giudizio sulla forza:
- * prima quelle non legali con questa Legend, poi quelle di cui non possiedi abbastanza copie.
- * Il campione scelto resta sempre con almeno una copia (103.3.a).
- */
-export function replaceOptions(deck: Deck, db: CardDb, owned: Record<string, number> = {}): { card: Card; qty: number; notes: string[] }[] {
+  owned: Record<string, number> = {},
+  meta?: MetaData | null,
+): { card: Card; qty: number; notes: string[]; share?: number }[] {
   const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
   if (!legend) return []
   const tag = legendChampionTag(legend, db)
+  const m = meta ? legendMeta(deck, db, meta) : null
   const have = ownedNames(db, owned)
   const need = namesIn(deck, db)
-  const out: { card: Card; qty: number; notes: string[]; rank: number }[] = []
+  const out: { card: Card; qty: number; notes: string[]; share?: number; rank: number; missing: boolean }[] = []
   for (const [id, q] of Object.entries(deck.main)) {
     const c = db.byId.get(id)
     if (!c || (id === deck.championId && q <= 1)) continue
     const notes: string[] = []
-    let rank = 2
-    if (!legalMain(c, legend.domains, tag)) {
-      notes.push('Non è legale con questa Legend')
-      rank = 0
-    } else if ((have.get(c.name) ?? 0) < (need.get(c.name) ?? 0)) {
-      notes.push(`Ne possiedi ${have.get(c.name) ?? 0} su ${need.get(c.name)}`)
-      rank = 1
-    }
-    out.push({ card: c, qty: id === deck.championId ? q - 1 : q, notes, rank })
+    const share = m ? (m.cards[c.name]?.share ?? 0) : undefined
+    const illegal = !legalMain(c, legend.domains, tag)
+    const missing = (have.get(c.name) ?? 0) < (need.get(c.name) ?? 0)
+    if (illegal) notes.push('Non è legale con questa Legend')
+    if (share !== undefined) notes.push(`In ${Math.round(share * 100)}% delle liste ben piazzate`)
+    if (missing) notes.push(`Ne possiedi ${have.get(c.name) ?? 0} su ${need.get(c.name)}`)
+    out.push({ card: c, qty: id === deck.championId ? q - 1 : q, notes, share, rank: illegal ? -1 : (share ?? 0), missing })
   }
   return out
-    .sort((a, b) => a.rank - b.rank || (a.card.energy ?? 0) - (b.card.energy ?? 0) || a.card.name.localeCompare(b.card.name))
-    .map(({ card, qty, notes }) => ({ card, qty, notes }))
+    .sort((a, b) => a.rank - b.rank || Number(b.missing) - Number(a.missing) || (a.card.energy ?? 0) - (b.card.energy ?? 0) || a.card.name.localeCompare(b.card.name))
+    .map(({ card, qty, notes, share }) => ({ card, qty, notes, share }))
 }
 
 // ---------------------------------------------------------------------------
@@ -463,6 +322,52 @@ export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, numbe
     if (switches.length >= limit) break
   }
   return { status: 'ok', lists: m.lists, good: m.good, weak: m.good < META_MIN_GOOD, switches }
+}
+
+/** Statistiche dei tornei per la Legend del mazzo, se ci sono liste ben piazzate. */
+export function legendMeta(deck: Deck, db: CardDb, meta: MetaData) {
+  const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
+  const m = legend ? meta.legends[legend.name] : undefined
+  return m && m.good > 0 ? m : null
+}
+
+/** Copie tipiche nelle liste ben piazzate: la media arrotondata, entro i limiti di copie (103.3). */
+export function typicalCopies(c: Card, avg: number) {
+  return Math.min(isUnique(c) ? 1 : MAX_COPIES, Math.max(1, Math.round(avg)))
+}
+
+export interface MetaSuggestion {
+  card: Card
+  /** Quota delle liste ben piazzate che la usano. */
+  share: number
+  /** Copie che usano di solito. */
+  copies: number
+  inDeck: number
+}
+
+/**
+ * Carte da aggiungere secondo le liste di torneo ben piazzate della stessa Legend: quelle usate in
+ * almeno una lista su cinque, finché il mazzo ne ha meno delle copie tipiche. Dalle più usate.
+ */
+export function metaSuggestions(deck: Deck, db: CardDb, meta: MetaData, limit = 30): { good: number; lists: number; weak: boolean; list: MetaSuggestion[] } | null {
+  const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
+  const m = legendMeta(deck, db, meta)
+  if (!legend || !m) return null
+  const tag = legendChampionTag(legend, db)
+  const inDeck = namesIn(deck, db)
+  const list: MetaSuggestion[] = []
+  for (const [name, u] of Object.entries(m.cards)) {
+    if (u.share < META_OUT) continue
+    const prints = db.cards.filter((c) => c.name === name)
+    const c = prints.find((x) => isBasePrinting(x)) ?? prints[0]
+    if (!c || !legalMain(c, legend.domains, tag)) continue
+    const copies = typicalCopies(c, u.copies)
+    const have = inDeck.get(name) ?? 0
+    if (have >= copies) continue
+    list.push({ card: c, share: u.share, copies, inDeck: have })
+  }
+  list.sort((a, b) => b.share - a.share || a.card.name.localeCompare(b.card.name))
+  return { good: m.good, lists: m.lists, weak: m.good < META_MIN_GOOD, list: list.slice(0, limit) }
 }
 
 // ---------------------------------------------------------------------------

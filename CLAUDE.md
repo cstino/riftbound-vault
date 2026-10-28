@@ -7,7 +7,7 @@
 - La partita contro il PC (`src/lib/game/`) è un motore completo per il Duel (487): turni, rune, catena e priorità, showdown, movimento, combattimento, cleanup e punteggio, con le regole citate nel codice e nel registro della partita. Un mazzo è giocabile solo se tutte le sue carte sono nel registro (`src/lib/game/cards.ts`); ogni carta registrata deve avere un test in `src/test/game-cards.test.ts` (lo controlla il test di copertura). `src/test/game-sim.test.ts` gioca partite complete PC contro PC e verifica che non nascano stati illegali.
 - Il PC (`src/lib/game/ai.ts`) sceglie solo tra le azioni che il motore dichiara legali: la strategia è un'euristica e può giocare male, ma non può barare.
 - Gli esempi usano carte reali di `public/data/cards.json`; il test controlla che contengano la parola chiave spiegata.
-- I suggerimenti del deck builder sono euristiche: devono sempre mostrare il motivo e non presentarsi come regole.
+- I suggerimenti del deck builder (carte da aggiungere, copie, carte da togliere) vengono dai tornei (`public/data/meta.json`): quota delle liste ben piazzate della stessa Legend e copie tipiche (media arrotondata). Mostrano sempre il dato e non si presentano come regole.
 - Gli switch del deck builder vengono solo dai tornei (`public/data/meta.json`): carte possedute presenti in almeno metà delle liste ben piazzate della stessa Legend al posto di carte presenti al massimo in una su cinque. Sotto le 10 liste ben piazzate si mostrano lo stesso (scelta dell'utente) ma con l'avviso che i dati sono pochi. Niente switch basati sui temi: non dicono se il mazzo migliora.
 - Quando esce un nuovo Core Rules: aggiornare `rules/`, rilanciare `scripts/extract_rules.py`, ricontrollare le voci del glossario toccate e `npx vitest run`.
 

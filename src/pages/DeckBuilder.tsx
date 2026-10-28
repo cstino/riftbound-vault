@@ -10,7 +10,6 @@ import {
   MAIN_MIN,
   RUNES_REQUIRED,
   countOf,
-  deckThemes,
   fitsIdentity,
   isUnique,
   MAX_COPIES,
@@ -22,7 +21,9 @@ import {
   META_OUT,
   type MetaData,
   type MetaSwitch,
-  suggestCards,
+  metaSuggestions,
+  typicalCopies,
+  legendMeta,
   validateDeck,
 } from '../lib/deck'
 import { DomainIcon, EnergyGlyph, MightGlyph } from '../components/Icons'
@@ -392,6 +393,7 @@ function Row({
   onChange,
   note,
   boxes = [],
+  usage,
 }: {
   card: Card
   qty: number
@@ -400,6 +402,8 @@ function Row({
   onChange: (q: number) => void
   note?: string
   boxes?: { deck: string; q: number }[]
+  /** Uso nelle liste di torneo ben piazzate: quota e copie tipiche. */
+  usage?: { share: number; copies: number } | null
 }) {
   const location = useLocation()
   const missing = Math.max(0, qty - owned)
@@ -420,6 +424,11 @@ function Row({
           {note && <span>{note}</span>}
           {missing > 0 ? <span className="todo">ti mancano {missing}</span> : owned > 0 ? <span className="ok">ce l’hai</span> : null}
           {missing > 0 && <BoxTag boxes={boxes} />}
+          {usage !== undefined && (
+            <span className={`usage${usage && usage.share >= 0.5 ? ' usage-hi' : ''}`} title="Liste di torneo ben piazzate della stessa Legend">
+              {usage ? `tornei ${Math.round(usage.share * 100)}% · di solito ${usage.copies}` : 'tornei 0%'}
+            </span>
+          )}
         </p>
       </div>
       <div className="row-step">
@@ -462,6 +471,13 @@ function DeckTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) 
   const location = useLocation()
   const names = useOwnedNames(deck.id)
   const decks = useVault((s) => s.decks)
+  const meta = useMeta()
+  const m = meta ? legendMeta(deck, db, meta) : null
+  const usageOf = (c: Card) => {
+    if (!m) return undefined
+    const u = m.cards[c.name]
+    return u ? { share: u.share, copies: typicalCopies(c, u.copies) } : null
+  }
   const legend = db.byId.get(deck.legendId!)!
   const [pickBf, setPickBf] = useState(false)
   const entries = Object.entries(deck.main)
@@ -512,6 +528,7 @@ function DeckTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) 
                     owned={names.get(c.name) ?? 0}
                     onChange={(n) => (n > q ? requestAdd(c) : setMain(c.id, n))}
                     boxes={boxesOf(db, decks, c.name, deck.id)}
+                    usage={usageOf(c)}
                     note={c.id === deck.championId ? 'Campione scelto' : isSignature(c) ? 'Signature' : undefined}
                   />
                 ))}
@@ -664,15 +681,23 @@ function BattlefieldPicker({ options, owned, onPick }: { options: Card[]; owned:
 
 function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) => void) => void; requestAdd: (c: Card) => void }) {
   const db = useDb()
-  const owned = useAvailable(deck.id)
   const names = useOwnedNames(deck.id)
   const decks = useVault((s) => s.decks)
-  const [focus, setFocus] = useState<string[]>([])
+  const meta = useMeta()
   const [onlyOwned, setOnlyOwned] = useState(false)
   const [q, setQ] = useState('')
   const legend = db.byId.get(deck.legendId!)!
-  const themes = useMemo(() => deckThemes(deck, db).slice(0, 10), [deck, db])
-  const suggestions = useMemo(() => suggestCards(deck, db, { focus, owned, onlyOwned, limit: 30 }), [deck, db, focus, owned, onlyOwned])
+  const who = legend.name.split(' - ')[0]
+  const sugg = useMemo(() => (meta ? metaSuggestions(deck, db, meta) : null), [meta, deck, db])
+  const suggestions = (sugg?.list ?? []).filter((x) => !onlyOwned || (names.get(x.card.name) ?? 0) > x.inDeck || boxesOf(db, decks, x.card.name, deck.id).length > 0)
+  const m = meta ? legendMeta(deck, db, meta) : null
+  /** Uso nei tornei, come motivo mostrato sotto la carta. */
+  const usage = (c: Card) => {
+    const u = m?.cards[c.name]
+    if (!m) return []
+    if (!u) return [`Non compare nelle ${m.good} liste ben piazzate di ${who}`]
+    return [`In ${Math.round(u.share * 100)}% delle liste ben piazzate · di solito ${typicalCopies(c, u.copies)} ${typicalCopies(c, u.copies) === 1 ? 'copia' : 'copie'}`]
+  }
 
   const legal = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -715,7 +740,7 @@ function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) =
               boxes={boxesOf(db, decks, c.name, deck.id)}
               inDeck={inDeck(c)}
               owned={names.get(c.name) ?? 0}
-              reasons={isBattlefield(c) && inDeck(c) === 0 && deck.battlefields.length >= BATTLEFIELDS_REQUIRED ? ['Hai già 3 campi: togline uno per aggiungerlo'] : []}
+              reasons={isBattlefield(c) && inDeck(c) === 0 && deck.battlefields.length >= BATTLEFIELDS_REQUIRED ? ['Hai già 3 campi: togline uno per aggiungerlo'] : isBattlefield(c) ? [] : usage(c)}
               max={maxFor(c)}
               onAdd={() => add(c)}
             />
@@ -735,40 +760,43 @@ function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) =
           />
           <section className="section">
             <div className="section-head">
-              <h2>Suggerite per questo mazzo</h2>
+              <h2>Suggerite dai tornei</h2>
+              {sugg && <span className="tiny">{sugg.list.length}</span>}
             </div>
             <p className="muted picker-help">
-              Indizi, non regole: confronto tag e parole chiave della tua Legend, del campione e delle carte già nel mazzo. Tocca un tema per dargli più peso.
+              Le carte più usate nelle liste ben piazzate di {who}, con le copie che usano di solito. Compaiono finché nel mazzo ne hai meno.
             </p>
+            {sugg?.weak && (
+              <p className="switch-weak">
+                Solo {sugg.good} {sugg.good === 1 ? 'lista ben piazzata' : 'liste ben piazzate'} di {who}: ogni lista sposta le percentuali di {Math.round(100 / sugg.good)}%.
+              </p>
+            )}
             <div className="chips" style={{ margin: '12px 0 4px' }}>
               <button className="chip" aria-pressed={onlyOwned} onClick={() => setOnlyOwned((v) => !v)}>
                 Solo carte che possiedo
               </button>
-              {themes.map((t) => (
-                <button
-                  key={t.key}
-                  className="chip"
-                  aria-pressed={focus.includes(t.key)}
-                  onClick={() => setFocus((f) => (f.includes(t.key) ? f.filter((x) => x !== t.key) : [...f, t.key]))}
-                >
-                  {t.kind === 'keyword' ? t.label : `#${t.label}`}
-                </button>
-              ))}
             </div>
           </section>
           <motion.ul layout className="rows">
-            {suggestions.map((s) => (
+            {suggestions.map((x) => (
               <SuggestionRow
-                key={s.card.id}
-                card={s.card}
-                inDeck={inDeck(s.card)}
-                owned={names.get(s.card.name) ?? 0}
-                reasons={s.reasons}
-                onAdd={() => add(s.card)}
-                boxes={boxesOf(db, decks, s.card.name, deck.id)}
+                key={x.card.id}
+                card={x.card}
+                inDeck={x.inDeck}
+                owned={names.get(x.card.name) ?? 0}
+                reasons={[
+                  `In ${Math.round(x.share * 100)}% delle liste ben piazzate`,
+                  `Di solito ${x.copies} ${x.copies === 1 ? 'copia' : 'copie'}: nel mazzo ne hai ${x.inDeck}`,
+                ]}
+                max={x.copies}
+                onAdd={() => add(x.card)}
+                boxes={boxesOf(db, decks, x.card.name, deck.id)}
               />
             ))}
-            {!suggestions.length && <p className="empty">Nessun suggerimento con questi filtri.</p>}
+            {meta !== undefined && !sugg && <p className="empty">Nessuna lista di torneo ben piazzata per questa Legend.</p>}
+            {sugg && !suggestions.length && (
+              <p className="empty">{onlyOwned ? 'Nessuna carta che possiedi da aggiungere.' : 'Il mazzo ha già tutte le carte più usate, con le copie tipiche.'}</p>
+            )}
           </motion.ul>
         </>
       )}
@@ -912,7 +940,9 @@ function ReplaceSheet({
 }) {
   const db = useDb()
   const owned = useAvailable(deck.id)
-  const order = useMemo(() => (card ? replaceOptions(deck, db, owned).filter((o) => o.card.name !== card.name) : []), [card, deck, db, owned])
+  const meta = useMeta()
+  const order = useMemo(() => (card ? replaceOptions(deck, db, owned, meta).filter((o) => o.card.name !== card.name) : []), [card, deck, db, owned, meta])
+  const hasMeta = order.some((o) => o.share !== undefined)
   return (
     <AnimatePresence>
       {card && (
@@ -926,8 +956,8 @@ function ReplaceSheet({
                 <div>
                   <h2>Con cosa la sostituisci?</h2>
                   <p className="muted">
-                    Il mazzo ha già {countOf(deck.main)} carte. Scegli quale togliere per far posto a <strong>{card.name}</strong>. In cima quelle non legali o che non possiedi,
-                    poi per costo.
+                    Il mazzo ha già {countOf(deck.main)} carte. Scegli quale togliere per far posto a <strong>{card.name}</strong>.{' '}
+                    {hasMeta ? 'In cima le meno usate nelle liste di torneo ben piazzate della tua Legend.' : 'In cima quelle non legali o che non possiedi, poi per costo.'}
                   </p>
                 </div>
               </div>

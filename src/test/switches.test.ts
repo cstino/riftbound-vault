@@ -1,6 +1,6 @@
 // Scelta della carta da togliere quando il mazzo è pieno: solo fatti, nessun giudizio sulla forza.
 import { describe, expect, it } from 'vitest'
-import { META_MIN_GOOD, metaSwitches, replaceOptions, type MetaData } from '../lib/deck'
+import { META_MIN_GOOD, metaSuggestions, metaSwitches, replaceOptions, type MetaData } from '../lib/deck'
 import { db, officialDeck } from './gameHelpers'
 
 const deck = () => ({ ...officialDeck('Zed'), id: 'test', name: 'Zed' })
@@ -87,5 +87,36 @@ describe('switch con carte chiuse in altri mazzi', () => {
     // liberata la scatola, la carta è libera
     const r2 = metaSwitches(d, db, { [inCard.id]: 2 }, meta, [{ ...box, released: true }])
     expect(r2.status === 'ok' && r2.switches[0].inBox).toBeUndefined()
+  })
+})
+
+describe('suggerimenti e uscite dai tornei', () => {
+  const setup = () => {
+    const d = deck()
+    const legend = db.byId.get(d.legendId!)!
+    const ids = Object.keys(d.main).filter((id) => id !== d.championId)
+    const cards: Record<string, { share: number; copies: number }> = {}
+    ids.forEach((id, i) => (cards[db.byId.get(id)!.name] = { share: i === 0 ? 0 : 0.9, copies: 2 }))
+    const fresh = db.cards.find((c) => c.type === 'Unit' && !Object.keys(d.main).some((id) => db.byId.get(id)!.name === c.name) && c.domains.every((x) => legend.domains.includes(x)))!
+    cards[fresh.name] = { share: 0.7, copies: 2.6 }
+    const meta: MetaData = { source: '', sourceUrl: '', days: 365, generatedAt: 0, goodRule: '', legends: { [legend.name]: { lists: 30, good: 20, cards } } }
+    return { d, meta, fresh, least: db.byId.get(ids[0])! }
+  }
+
+  it('suggerisce le carte usate con le copie tipiche, finché il mazzo ne ha meno', () => {
+    const { d, meta, fresh } = setup()
+    const s = metaSuggestions(d, db, meta)!
+    const row = s.list.find((x) => x.card.name === fresh.name)!
+    expect(row.copies).toBe(3) // media 2,6 arrotondata
+    expect(row.inDeck).toBe(0)
+    d.main[fresh.id] = 3
+    expect(metaSuggestions(d, db, meta)!.list.some((x) => x.card.name === fresh.name)).toBe(false)
+  })
+
+  it('quando il mazzo è pieno propone di togliere prima la carta meno usata', () => {
+    const { d, meta, least } = setup()
+    const order = replaceOptions(d, db, {}, meta)
+    expect(order[0].card.name).toBe(least.name)
+    expect(order[0].notes).toContain('In 0% delle liste ben piazzate')
   })
 })
