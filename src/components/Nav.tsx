@@ -38,6 +38,16 @@ const ITEMS = [
       </>
     ),
   },
+  {
+    to: '/playground',
+    label: 'Playground',
+    icon: (
+      <>
+        <path d="M7 8h10a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L14 14.5h-4l-.7 1.1A3.5 3.5 0 0 1 3 13.5V12a4 4 0 0 1 4-4Z" />
+        <path d="M8 10.5v3M6.5 12h3M15.5 11h.01M17.5 13h.01" />
+      </>
+    ),
+  },
 ]
 
 export function Nav() {

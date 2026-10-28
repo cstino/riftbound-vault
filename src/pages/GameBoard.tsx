@@ -22,7 +22,7 @@ export function GameBoard() {
   const version = useGame((s) => s.version)
   const bump = useGame((s) => s.bump)
   useAiRunner(match, version, bump)
-  if (!match) return <Navigate to="/impara/partita" replace />
+  if (!match) return <Navigate to="/playground/partita" replace />
   return <Board match={match} version={version} />
 }
 
@@ -80,7 +80,7 @@ function Board({ match, version }: { match: Match; version: number }) {
   return (
     <div className="table">
       <div className="table-corner">
-        <Link to="/impara/partita" className="corner-btn" aria-label="Esci dalla partita">
+        <Link to="/playground/partita" className="corner-btn" aria-label="Esci dalla partita">
           ✕
         </Link>
         <button type="button" className="corner-btn" onClick={() => setSheet({ kind: 'log' })}>
@@ -709,7 +709,7 @@ function GameOver({ g, onReview }: { g: Game; onReview: () => void }) {
     const find = (id: string) => decks.find((d) => d.id === id)
     const a = chosen && find(chosen.mine)
     const b = chosen && find(chosen.pc)
-    if (!a || !b || !chosen) return navigate('/impara/partita')
+    if (!a || !b || !chosen) return navigate('/playground/partita')
     const m = new Match([deckToSpec(a, db), deckToSpec(b, db)], ['Giocatore', 'PC'], 0)
     m.next()
     start(m, chosen)
@@ -729,7 +729,7 @@ function GameOver({ g, onReview }: { g: Game; onReview: () => void }) {
               Rivincita
             </button>
           )}
-          <Link to="/impara/partita" className="btn">
+          <Link to="/playground/partita" className="btn">
             Cambia mazzi
           </Link>
         </div>

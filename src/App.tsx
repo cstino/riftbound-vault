@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Route, Routes, useLocation, type Location } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom'
 import { Nav } from './components/Nav'
 import { KeywordSheet } from './components/KeywordSheet'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -16,6 +16,7 @@ import { Quiz } from './pages/Quiz'
 import { Training } from './pages/Training'
 import { PlayVsPc } from './pages/PlayVsPc'
 import { GameBoard } from './pages/GameBoard'
+import { Playground } from './pages/Playground'
 import './app.css'
 
 export default function App() {
@@ -27,7 +28,7 @@ export default function App() {
   const pageLocation = background ?? location
 
   return (
-    <div className={`shell${pageLocation.pathname === '/impara/partita/gioca' ? ' shell-game' : ''}`}>
+    <div className={`shell${pageLocation.pathname === '/playground/partita/gioca' ? ' shell-game' : ''}`}>
       <Nav />
       <main className="main">
         <AnimatePresence mode="wait" initial={false}>
@@ -46,10 +47,16 @@ export default function App() {
               <Route path="/aggiungi" element={<AddCards />} />
               <Route path="/impara" element={<Learn />} />
               <Route path="/impara/quiz" element={<Quiz />} />
-              <Route path="/impara/allenamento" element={<Training />} />
-              <Route path="/impara/allenamento/:id" element={<Training />} />
-              <Route path="/impara/partita" element={<PlayVsPc />} />
-              <Route path="/impara/partita/gioca" element={<GameBoard />} />
+              <Route path="/playground" element={<Playground />} />
+              <Route path="/playground/allenamento" element={<Training />} />
+              <Route path="/playground/allenamento/:id" element={<Training />} />
+              <Route path="/playground/partita" element={<PlayVsPc />} />
+              <Route path="/playground/partita/gioca" element={<GameBoard />} />
+              {/* vecchi indirizzi, quando stavano in Impara */}
+              <Route path="/impara/allenamento" element={<Navigate to="/playground/allenamento" replace />} />
+              <Route path="/impara/partita" element={<Navigate to="/playground/partita" replace />} />
+              <Route path="/impara/partita/*" element={<Navigate to="/playground/partita" replace />} />
+              <Route path="/impara/allenamento/*" element={<Navigate to="/playground/allenamento" replace />} />
               <Route path="/impara/guida/:id" element={<LearnChapterPage />} />
               <Route path="/impara/parola/:id" element={<GlossaryPage />} />
               <Route path="*" element={<Home />} />

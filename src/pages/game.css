@@ -1469,3 +1469,57 @@ body.no-scroll {
 .fan-actions .btn {
   box-shadow: 0 8px 20px -6px #000;
 }
+
+/* ---------------------------------------------------------------- playground */
+
+.playground {
+  width: min(100%, 720px);
+}
+
+.modes {
+  display: grid;
+  gap: 12px;
+}
+
+.mode {
+  position: relative;
+  display: grid;
+  min-height: 190px;
+  align-items: end;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: var(--ink-1);
+  transition: border-color 200ms, transform 200ms var(--ease-out);
+}
+
+.mode:hover {
+  border-color: var(--magenta);
+  transform: translateY(-2px);
+}
+
+.mode-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  opacity: 0.55;
+  mask-image: linear-gradient(90deg, transparent, #000 70%);
+}
+
+.mode-body {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  max-width: 70%;
+  padding: 18px;
+}
+
+.mode-body strong {
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.15;
+}

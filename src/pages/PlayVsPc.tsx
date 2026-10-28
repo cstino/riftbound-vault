@@ -59,7 +59,7 @@ export function PlayVsPc() {
     const m = new Match([deckToSpec(mine.deck, db), deckToSpec(pc.deck, db)], ['Giocatore', 'PC'], 0)
     m.next()
     startGame(m, { mine: mine.deck.id, pc: pc.deck.id })
-    navigate('/impara/partita/gioca')
+    navigate('/playground/partita/gioca')
   }
 
   function choose(id: string) {
@@ -69,8 +69,8 @@ export function PlayVsPc() {
 
   return (
     <div className="setup">
-      <Link to="/impara" className="link-more">
-        ← Impara
+      <Link to="/playground" className="link-more">
+        ← Playground
       </Link>
       <header className="setup-head">
         <h1>Partita contro il PC</h1>

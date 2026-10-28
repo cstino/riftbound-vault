@@ -78,7 +78,7 @@ export function Training() {
         key={lesson.id}
         lesson={lesson}
         index={i}
-        onNext={() => navigate(next ? `/impara/allenamento/${next.id}` : '/impara/allenamento')}
+        onNext={() => navigate(next ? `/playground/allenamento/${next.id}` : '/playground/allenamento')}
         nextLabel={next ? 'Prossima lezione' : 'Torna alle lezioni'}
       />
     )
@@ -86,8 +86,8 @@ export function Training() {
 
   return (
     <div className="training">
-      <Link to="/impara" className="link-more">
-        ← Impara
+      <Link to="/playground" className="link-more">
+        ← Playground
       </Link>
       <header className="training-head">
         <h1>Allenamento</h1>
@@ -98,7 +98,7 @@ export function Training() {
       <ol className="lessons">
         {LESSONS.map((l, i) => (
           <motion.li key={l.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-            <Link to={`/impara/allenamento/${l.id}`} className={`lesson${done.includes(l.id) ? ' lesson-done' : ''}`}>
+            <Link to={`/playground/allenamento/${l.id}`} className={`lesson${done.includes(l.id) ? ' lesson-done' : ''}`}>
               <span className="lesson-n">{done.includes(l.id) ? '✓' : i + 1}</span>
               <span className="lesson-body">
                 <strong>{l.title}</strong>
@@ -167,7 +167,7 @@ function Arena({ lesson, index, onNext, nextLabel }: { lesson: TrainingLesson; i
   return (
     <div className="training">
       <div className="arena-top">
-        <Link to="/impara/allenamento" className="link-more">
+        <Link to="/playground/allenamento" className="link-more">
           ← Lezioni
         </Link>
         {index != null && (
