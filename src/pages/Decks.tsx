@@ -38,7 +38,7 @@ export function Decks() {
           const legend = d.legendId ? db.byId.get(d.legendId) : undefined
           const champ = d.championId ? db.byId.get(d.championId) : undefined
           const issues = validateDeck(d, db)
-          const cov = ownedCoverage(d, db, owned)
+          const cov = ownedCoverage(d, db, owned, decks)
           return (
             <motion.div key={d.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}>
               <Link to={`/mazzi/${d.id}`} className="deck-card">

@@ -39,6 +39,11 @@ export interface Deck {
   preset?: boolean
   /** Copie aggiunte alla collezione con "Ho questo mazzo", per poterle togliere esattamente. */
   addedToCollection?: Record<string, number>
+  /**
+   * Le carte di un mazzo posseduto restano nella sua scatola: non si possono usare in altri mazzi
+   * finché non vengono liberate (true).
+   */
+  released?: boolean
   updatedAt: number
 }
 

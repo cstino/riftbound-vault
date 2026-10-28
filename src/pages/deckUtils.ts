@@ -11,9 +11,33 @@ export function ownedByName(db: CardDb, owned: Record<string, number>) {
   return m
 }
 
-/** Quante carte del mazzo principale possiedi già. */
-export function ownedCoverage(deck: Deck, db: CardDb, owned: Record<string, number>) {
-  const byName = ownedByName(db, owned)
+/**
+ * Copie chiuse nei mazzi posseduti e non liberati, per id di stampa. `except`: il mazzo che si sta
+ * guardando, le cui carte sono a sua disposizione.
+ */
+export function lockedCopies(decks: Deck[], except?: string) {
+  const out: Record<string, number> = {}
+  for (const d of decks) {
+    if (!d.addedToCollection || d.released || d.id === except) continue
+    for (const [id, q] of Object.entries(d.addedToCollection)) out[id] = (out[id] ?? 0) + q
+  }
+  return out
+}
+
+/** Copie utilizzabili: quelle sfuse, più quelle del mazzo `forDeck` stesso. */
+export function availableCopies(owned: Record<string, number>, decks: Deck[], forDeck?: string) {
+  const locked = lockedCopies(decks, forDeck)
+  const out: Record<string, number> = {}
+  for (const [id, q] of Object.entries(owned)) {
+    const left = q - (locked[id] ?? 0)
+    if (left > 0) out[id] = left
+  }
+  return out
+}
+
+/** Quante carte del mazzo principale hai a disposizione per questo mazzo. */
+export function ownedCoverage(deck: Deck, db: CardDb, owned: Record<string, number>, decks: Deck[] = []) {
+  const byName = ownedByName(db, availableCopies(owned, decks, deck.id))
   const needByName = new Map<string, number>()
   for (const [id, q] of Object.entries(deck.main)) {
     const c = db.byId.get(id)

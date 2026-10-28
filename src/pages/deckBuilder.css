@@ -582,3 +582,10 @@
   font-size: 13.5px;
   line-height: 1.45;
 }
+
+.owned-deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}

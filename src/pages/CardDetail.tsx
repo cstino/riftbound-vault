@@ -33,6 +33,18 @@ export function CardDetail() {
     }
   }, [])
 
+  // Da dove vengono le copie: chiuse nei mazzi posseduti, liberate, oppure sfuse
+  const origin = useMemo(() => {
+    if (!card) return { locked: [] as { name: string; q: number }[], freed: [] as { name: string; q: number }[], loose: 0 }
+    const locked: { name: string; q: number }[] = []
+    const freed: { name: string; q: number }[] = []
+    for (const d of decks) {
+      const q = d.addedToCollection?.[card.id] ?? 0
+      if (q > 0) (d.released ? freed : locked).push({ name: d.name, q })
+    }
+    const loose = Math.max(0, qty - locked.reduce((a, x) => a + x.q, 0))
+    return { locked, freed, loose }
+  }, [card, decks, qty])
   const keywords = useMemo(() => keywordIdsIn(card?.text ?? null), [card])
   const printings = useMemo(() => (card ? db.cards.filter((c) => c.name === card.name && c.id !== card.id) : []), [db, card])
   const inDecks = useMemo(
@@ -118,6 +130,19 @@ export function CardDetail() {
                 </motion.span>{' '}
                 {qty === 1 ? 'copia' : 'copie'}
               </p>
+              {(origin.locked.length > 0 || origin.freed.length > 0) && (
+                <ul className="owned-origin">
+                  {origin.locked.map((x) => (
+                    <li key={x.name}>
+                      {x.q} nel mazzo {x.name}: chiuse nella scatola, non usabili in altri mazzi
+                    </li>
+                  ))}
+                  <li>
+                    {origin.loose} {origin.loose === 1 ? 'sfusa' : 'sfuse'}, usabili in qualsiasi mazzo
+                    {origin.freed.length > 0 && ` (di cui ${origin.freed.map((x) => `${x.q} liberate da ${x.name}`).join(', ')})`}
+                  </li>
+                </ul>
+              )}
             </div>
             <div className="stepper">
               <button type="button" onClick={() => addQty(card.id, -1)} disabled={qty === 0} aria-label="Togli una copia">

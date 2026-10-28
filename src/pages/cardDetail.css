@@ -167,3 +167,14 @@
   text-align: center;
   padding-top: 8px;
 }
+
+.owned-origin {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
