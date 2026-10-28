@@ -13,7 +13,7 @@ const TESTED = new Set(
 // le rune base sono testate a parte con un ciclo
 for (const r of ['Fury Rune', 'Chaos Rune', 'Calm Rune', 'Order Rune', 'Mind Rune', 'Body Rune']) TESTED.add(r)
 
-const PLAYABLE = ['Zed', 'Shen', 'Vi']
+const PLAYABLE = ['Zed', 'Shen', 'Vi', 'Rumble']
 
 describe('copertura', () => {
   for (const name of PLAYABLE) {

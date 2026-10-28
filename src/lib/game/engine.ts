@@ -451,7 +451,16 @@ export function* playToken(g: Game, p: PID, card: Card, loc: LocId, opts: { read
   applyContested(g, o)
   const what = card.might != null ? `${card.name} (${card.might} Might)` : card.name
   log(g, `${pname(g, p)} gioca un token ${what}${o.exhausted ? '' : ' pronto'} ${inLoc(g, loc)}.`, '185.2', p)
+  firePlayed(g, o, p)
   return o
+}
+
+/** Trigger "When you play ..." dei permanenti e della Legend di chi gioca (anche per i token, 185.2.a). */
+export function firePlayed(g: Game, played: Obj, p: PID) {
+  for (const o of [g.objs.get(g.players[p].legend)!, ...board(g).filter((x) => x.controller === p)]) {
+    const def = implOf(o.card.name).allyPlays
+    if (def) queueTrig(g, def, o, p, { unit: played })
+  }
 }
 
 /** Buff: un solo segnalino per unità, +1 Might (702-703). */
@@ -493,7 +502,15 @@ export function kw(g: Game, o: Obj): Keywords {
     ganking: !!s.ganking,
     deflect: s.deflect ?? 0,
   }
-  const d = impl.keywords?.(g, o) ?? {}
+  const d: Partial<Keywords> = { ...(impl.keywords?.(g, o) ?? {}) }
+  for (const a of auras(g, o)) {
+    d.assault = (d.assault ?? 0) + (a.assault ?? 0)
+    d.shield = (d.shield ?? 0) + (a.shield ?? 0)
+    d.deflect = (d.deflect ?? 0) + (a.deflect ?? 0)
+    d.tank ||= a.tank
+    d.ganking ||= a.ganking
+    d.backline ||= a.backline
+  }
   k.assault += d.assault ?? 0 // 807.2: i valori si sommano
   k.shield += d.shield ?? 0 // 814.2
   k.deflect += d.deflect ?? 0 // 809.2
@@ -509,6 +526,18 @@ export function kw(g: Game, o: Obj): Keywords {
   return k
 }
 
+/** Effetti continui che altri oggetti dello stesso controllore applicano a `o`. */
+function auras(g: Game, o: Obj) {
+  if (o.zone !== 'board') return []
+  const out = []
+  const legend = g.objs.get(g.players[o.controller].legend)!
+  for (const src of [legend, ...board(g).filter((x) => x.controller === o.controller)]) {
+    const a = implOf(src.card.name).aura?.(g, src, o)
+    if (a) out.push(a)
+  }
+  return out
+}
+
 /** Might effettiva (143.2.a): base, modifiche, equipaggiamento (716), passive e ruolo in combattimento. */
 export function might(g: Game, o: Obj) {
   let base = o.card.might ?? 0
@@ -516,6 +545,7 @@ export function might(g: Game, o: Obj) {
   let v = base
   for (const m of o.mods) v += m.might ?? 0
   v += implOf(o.card.name).might?.(g, o) ?? 0
+  for (const a of auras(g, o)) v += a.might ?? 0
   for (const gear of board(g)) if (gear.attachedTo === o.uid) v += gear.card.might ?? 0
   if (o.buff) v += 1 // 703
   if (isBf(o.loc)) v += implOf(bfAt(g, o.loc).card.name).bfMight?.(g, o) ?? 0
@@ -973,6 +1003,8 @@ function* startCombat(g: Game): Gen {
   log(g, `Combattimento a ${bfName(g, bf.loc)}: attacca ${pname(g, sd.attacker)}, difende ${pname(g, sd.defender)}.`, '466.2', sd.attacker)
   // 466.2.b: effetti di inizio combattimento
   implOf(bf.card.name).bfCombatStart?.(g, sd.loc)
+  const dd = implOf(bf.card.name).bfDefend
+  if (dd && bf.controller === sd.defender) queueTrig(g, dd, { ...(g.objs.get(g.players[sd.defender].legend) as Obj), card: bf.card, controller: sd.defender }, sd.defender, { loc: sd.loc })
   // 466.2.c: designazioni
   for (const o of unitsAt(g, sd.loc)) {
     o.role = o.controller === sd.attacker ? 'attacker' : 'defender'
@@ -1245,10 +1277,14 @@ export function available(g: Game, p: PID): ActionOpt[] {
 
 // ---------------------------------------------------------------- giocare carte (349-359)
 
-export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean> {
+/**
+ * Gioca una carta (349-359). `opts.limited`: giocata per effetto di un'altra carta (420.3), con
+ * eventuale costo sostitutivo (420.3.b.1).
+ */
+export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limited?: boolean; cost?: Cost } = {}): Gen<boolean> {
   const impl = implOf(o.card.name)
   const pl = g.players[p]
-  const w = windowFor(g, p)!
+  const w: Window = opts.limited ? 'main' : windowFor(g, p)!
   const ctx = newCtx(o, p, src)
   const hiddenAt = ctx.hiddenAt
   // 355.1.a: costo aggiuntivo opzionale
@@ -1302,7 +1338,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
     if (!ok) return false
   }
   // 356-357: costo totale e pagamento
-  const cost = totalCost(g, p, o, src, ctx)
+  const cost = opts.cost ? withAny(opts.cost, ctx.extraPower) : totalCost(g, p, o, src, ctx)
   if (!canPay(g, p, cost)) {
     log(g, `Non puoi pagare il costo di ${o.card.name}.`, '358.2', p)
     return false
@@ -1327,6 +1363,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
     )
     applyContested(g, perm)
     if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt })
+    firePlayed(g, perm, p)
     if (isUnit(perm) && isBf(loc)) {
       const bdef = implOf(bfAt(g, loc).card.name).bfUnitPlayed
       if (bdef) queueTrig(g, bdef, { ...perm, card: bfAt(g, loc).card }, p, { unit: perm })
@@ -1446,7 +1483,8 @@ export function abilitiesOf(o: Obj): AbilityDef[] {
       cost: (g, self, ctx) => impl.equipCost?.(g, self, (ctx?.data.unit as Obj | undefined) ?? null) ?? { energy: 0, power: doms.map((d) => [d]) },
       can: (g, self) => units(g).some((u) => u.controller === self.controller && u.uid !== self.attachedTo),
       prepare: function* (g, ctx) {
-        const u = yield* chooseUnit(g, ctx, `A quale unità attacchi ${ctx.self.card.name}?`, (u) => u.controller === ctx.p && u.uid !== ctx.self.attachedTo, (u) => might(g, u), { cancel: true, rule: '818.1.b.1' })
+        const affordable = (u: Obj) => !impl.equipCost || canPay(g, ctx.p, impl.equipCost(g, ctx.self, u))
+        const u = yield* chooseUnit(g, ctx, `A quale unità attacchi ${ctx.self.card.name}?`, (u) => u.controller === ctx.p && u.uid !== ctx.self.attachedTo && affordable(u), (u) => might(g, u), { cancel: true, rule: '818.1.b.1' })
         if (!u) return false
         ctx.data.unit = u
         return true

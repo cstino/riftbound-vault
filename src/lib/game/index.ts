@@ -1,6 +1,7 @@
 // Ingresso del motore di partita: registrazione delle carte, mazzi giocabili e partita in corso.
 import './cards'
 import './cards-vi'
+import './cards-rumble'
 import type { CardDb } from '../data'
 import { isBattlefield, isLegend, isRune } from '../data'
 import type { Card, Deck } from '../types'

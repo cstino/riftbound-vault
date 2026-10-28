@@ -10,9 +10,11 @@ export interface AiMemory {
   /** Azioni già provate senza effetto, per non ripeterle all'infinito. */
   tried: Set<string>
   lastLog: number
+  /** Tentativi per azione in questo turno: oltre 3 l'azione non si riprova. */
+  attempts: Map<string, number>
 }
 
-export const newMemory = (): AiMemory => ({ plan: null, tried: new Set(), lastLog: -1 })
+export const newMemory = (): AiMemory => ({ plan: null, tried: new Set(), lastLog: -1, attempts: new Map() })
 
 const defenseMight = (g: Game, o: Obj) => Math.max(0, might(g, o) + (o.role ? 0 : kw(g, o).shield))
 const attackMight = (g: Game, o: Obj) => Math.max(0, might(g, o) + (o.role ? 0 : kw(g, o).assault))
@@ -74,8 +76,10 @@ function chooseAct(g: Game, d: Extract<Decision, { type: 'act' }>, mem: AiMemory
   if (g.log.length === mem.lastLog) {
     // l'ultima azione è stata annullata: non riprovarla
   } else mem.tried.clear()
-  const acts = d.actions.filter((a) => !mem.tried.has(a.id))
+  const key = (a: ActionOpt) => `${g.turn}:${a.id}`
+  const acts = d.actions.filter((a) => !mem.tried.has(a.id) && (mem.attempts.get(key(a)) ?? 0) < 3)
   const pick = (a: ActionOpt) => {
+    mem.attempts.set(key(a), (mem.attempts.get(key(a)) ?? 0) + 1)
     mem.tried.add(a.id)
     mem.lastLog = g.log.length
     return a.id

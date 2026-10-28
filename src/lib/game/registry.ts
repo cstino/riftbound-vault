@@ -103,6 +103,12 @@ export interface CardImpl {
   /** "When an opponent plays a gear". */
   opponentGear?: (g: Game, self: Obj, gear: Obj) => Trigger | null
   might?: (g: Game, self: Obj) => number
+  /** Effetti continui su altre unità del controllore ("Your Mechs have ..."). Attivi dalla board o dalla zona Legend. */
+  aura?: (g: Game, self: Obj, target: Obj) => (Partial<Keywords> & { might?: number }) | null
+  /** "When you play a unit/card": ctx.data.unit è l'oggetto giocato (anche token). */
+  allyPlays?: TrigDef
+  /** Campi: "When you defend here". */
+  bfDefend?: TrigDef
   keywords?: (g: Game, self: Obj) => Partial<Keywords>
   noCombatDamage?: (g: Game, self: Obj) => boolean
   empower?: { energy?: number; power?: Domain[]; discard?: 'any' | 'spell' }

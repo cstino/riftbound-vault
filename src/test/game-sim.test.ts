@@ -9,8 +9,11 @@ describe('partite complete PC contro PC', () => {
     ['Zed', 'Shen'],
     ['Vi', 'Zed'],
     ['Shen', 'Vi'],
+    ['Rumble', 'Vi'],
+    ['Zed', 'Rumble'],
+    ['Rumble', 'Shen'],
   ] as const
-  for (let seed = 1; seed <= 45; seed++) {
+  for (let seed = 1; seed <= 60; seed++) {
     const pair = PAIRS[seed % PAIRS.length]
     const decks = seed % 2 ? pair : ([pair[1], pair[0]] as const)
     it(`${decks[0]} contro ${decks[1]}, seed ${seed}`, () => {
