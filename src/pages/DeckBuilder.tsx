@@ -31,6 +31,7 @@ import {
 } from '../lib/deck'
 import { DomainIcon, EnergyGlyph, MightGlyph } from '../components/Icons'
 import { RuleQuote } from '../components/Explainer'
+import { askConfirm } from '../components/ConfirmDialog'
 import { cardParagraphs } from '../components/CardText'
 import { ownedByName, ownedCoverage } from './deckUtils'
 import './deckBuilder.css'
@@ -146,7 +147,13 @@ export function DeckBuilder() {
           type="button"
           className="link-more builder-delete"
           onClick={async () => {
-            if (!confirm(`Ripristinare “${deck.name}” con la lista ufficiale? Le modifiche fatte a questo mazzo andranno perse.`)) return
+            const ok = await askConfirm({
+              title: `Ripristinare “${deck.name}”?`,
+              message: 'Il mazzo torna uguale alla lista ufficiale: le modifiche che hai fatto andranno perse.',
+              confirmLabel: 'Ripristina',
+              danger: true,
+            })
+            if (!ok) return
             const presets: { name: string }[] = await fetch(asset('data/decks.json')).then((r) => r.json())
             const original = presets.find((p) => `preset-${p.name.toLowerCase()}` === deck.id)
             if (original) saveDeck({ ...presetToDeck(original as never, db), name: deck.name })
@@ -160,8 +167,14 @@ export function DeckBuilder() {
         <button
           type="button"
           className="link-more builder-delete"
-          onClick={() => {
-            if (confirm(`Eliminare il mazzo “${deck.name}”?`)) {
+          onClick={async () => {
+            const ok = await askConfirm({
+              title: `Eliminare “${deck.name}”?`,
+              message: 'Il mazzo viene cancellato. Le carte nella tua collezione restano.',
+              confirmLabel: 'Elimina',
+              danger: true,
+            })
+            if (ok) {
               deleteDeck(deck.id)
               navigate('/mazzi')
             }
@@ -200,7 +213,15 @@ function OwnedDeckBox({ deck }: { deck: Deck }) {
           <button
             type="button"
             className="link-more"
-            onClick={() => confirm('Togliere dalla collezione le carte di questo mazzo?') && setDeckOwned(deck, false)}
+            onClick={async () => {
+              const ok = await askConfirm({
+                title: 'Togliere le carte dalla collezione?',
+                message: `Le ${total} carte di questo mazzo vengono tolte dalla collezione. Il mazzo resta in Mazzi.`,
+                confirmLabel: 'Togli',
+                danger: true,
+              })
+              if (ok) setDeckOwned(deck, false)
+            }}
           >
             Togli dalla collezione
           </button>

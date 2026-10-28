@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Route, Routes, useLocation, type Location } from 'react-router-dom'
 import { Nav } from './components/Nav'
 import { KeywordSheet } from './components/KeywordSheet'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { CardDetail } from './pages/CardDetail'
 import { Home } from './pages/Home'
 import { Collection } from './pages/Collection'
@@ -51,6 +52,7 @@ export default function App() {
       </main>
       <AnimatePresence>{isCard && <CardDetail key={location.pathname} />}</AnimatePresence>
       <KeywordSheet />
+      <ConfirmDialog />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import type { Card } from '../lib/types'
 import { asset, cardImage, isBasePrinting, SET_ORDER, sortCards } from '../lib/data'
 import { validateDeck } from '../lib/deck'
 import { type Product, presetDeckId, productDeckToDeck } from '../lib/products'
+import { askConfirm } from '../components/ConfirmDialog'
 import { deckFromLines, linesToCounts, parseList } from '../lib/importList'
 import './addCards.css'
 
@@ -380,8 +381,14 @@ function ProductCatalog() {
     setJustAdded(p.id)
   }
 
-  function remove(p: Product) {
-    if (!confirm(`Togliere dalla collezione le carte di “${p.name}”?`)) return
+  async function remove(p: Product) {
+    const ok = await askConfirm({
+      title: `Togliere “${p.name.replace(/^.*?:\s*/, '')}”?`,
+      message: 'Le carte di questo prodotto vengono tolte dalla collezione. I mazzi restano in Mazzi.',
+      confirmLabel: 'Togli',
+      danger: true,
+    })
+    if (!ok) return
     for (const d of p.decks) {
       const deck = useVault.getState().decks.find((x) => x.id === presetDeckId(d.name))
       if (deck?.addedToCollection) setDeckOwned(deck, false)
