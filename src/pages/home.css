@@ -191,6 +191,7 @@
 }
 
 .account-sync-offline,
-.account-sync-error {
+.account-sync-error,
+.account-sync-unreachable {
   color: #ffb36b;
 }

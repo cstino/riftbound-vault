@@ -166,11 +166,12 @@ export function Home() {
 }
 
 const SYNC_LABEL: Record<SyncStatus, string> = {
-  idle: 'Dati salvati online',
+  idle: 'Collegamento ai dati online…',
   saving: 'Salvataggio…',
   saved: 'Dati salvati online',
   offline: 'Offline: salverò appena torna la rete',
-  error: 'Salvataggio non riuscito: riprovo alla prossima modifica',
+  error: 'Salvataggio online non riuscito: riprovo alla prossima modifica',
+  unreachable: 'Dati online non raggiungibili: stai usando la copia di questo dispositivo',
 }
 
 /** Account collegato, stato del salvataggio online e uscita. */
@@ -191,9 +192,9 @@ function AccountBar() {
         onClick={async () => {
           const ok = await askConfirm({
             title: 'Uscire?',
-            message: sync === 'offline' || sync === 'error' ? 'Alcune modifiche non sono ancora salvate online e andrebbero perse.' : 'Collezione e mazzi restano salvati online: li ritrovi al prossimo accesso.',
+            message: sync === 'offline' || sync === 'error' || sync === 'unreachable' ? 'Alcune modifiche non sono ancora salvate online e andrebbero perse.' : 'Collezione e mazzi restano salvati online: li ritrovi al prossimo accesso.',
             confirmLabel: 'Esci',
-            danger: sync === 'offline' || sync === 'error',
+            danger: sync === 'offline' || sync === 'error' || sync === 'unreachable',
           })
           if (ok) await signOut()
         }}

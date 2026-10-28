@@ -10,7 +10,7 @@ interface VaultData {
   decks: Deck[]
 }
 
-export type SyncStatus = 'idle' | 'saving' | 'saved' | 'offline' | 'error'
+export type SyncStatus = 'idle' | 'saving' | 'saved' | 'offline' | 'error' | 'unreachable'
 let status: SyncStatus = 'idle'
 const listeners = new Set<(s: SyncStatus) => void>()
 const setStatus = (s: SyncStatus) => {
@@ -18,6 +18,8 @@ const setStatus = (s: SyncStatus) => {
   for (const l of listeners) l(s)
 }
 export const syncStatus = () => status
+/** La versione online non si è potuta leggere: si lavora sulla copia del dispositivo. */
+export const markUnreachable = () => setStatus(navigator.onLine ? 'unreachable' : 'offline')
 export function onSyncStatus(fn: (s: SyncStatus) => void) {
   listeners.add(fn)
   return () => void listeners.delete(fn)

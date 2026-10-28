@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { type CardDb, loadCards } from './data'
 import { del, get } from 'idb-keyval'
 import { loadSeed, useVault } from './store'
-import { loadRemote, startSync } from './sync'
+import { loadRemote, markUnreachable, startSync } from './sync'
 import { presetToDeck } from './deck'
 
 const DbContext = createContext<CardDb | null>(null)
@@ -26,20 +26,21 @@ async function openVault(userId: string, db: CardDb) {
   } catch {
     online = false // offline: si lavora sulla copia locale e si salva quando torna la rete
   }
-  if (remote) useVault.getState().importData(remote)
+  // dati della versione senza login su questo dispositivo: entrano se online la collezione è ancora vuota
+  const legacy = online ? await get<string>(LEGACY_KEY) : undefined
+  const old = legacy ? (JSON.parse(legacy) as { state?: { owned?: Record<string, number>; decks?: never[] } }).state : undefined
+  const oldOk = !!old?.owned && !!old.decks && Object.keys(old.owned).length > 0
+  if (oldOk && (!remote || Object.keys(remote.owned ?? {}).length === 0)) {
+    useVault.getState().importData({ owned: old!.owned!, decks: old!.decks! })
+    await del(LEGACY_KEY)
+  } else if (remote) useVault.getState().importData(remote)
   else if (online && !useVault.getState().seeded) {
-    const legacy = await get<string>(LEGACY_KEY)
-    const old = legacy ? (JSON.parse(legacy) as { state?: { owned?: Record<string, number>; decks?: never[] } }).state : undefined
-    if (old?.owned && old.decks) {
-      useVault.getState().importData({ owned: old.owned, decks: old.decks })
-      await del(LEGACY_KEY)
-    } else {
-      const { presets } = await loadSeed()
-      useVault.getState().seed({}, presets.map((p: never) => presetToDeck(p, db)))
-    }
+    const { presets } = await loadSeed()
+    useVault.getState().seed({}, presets.map((p: never) => presetToDeck(p, db)))
   }
   // offline: si salvano solo le modifiche fatte da qui in poi, appena torna la rete
   startSync(userId, online)
+  if (!online) markUnreachable()
 }
 
 export function DbProvider({ children, fallback, userId }: { children: ReactNode; fallback: ReactNode; userId: string }) {
