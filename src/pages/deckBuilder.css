@@ -171,16 +171,23 @@
 }
 
 .bf-row,
-.bf-picker {
+.bf-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
 }
 
 .bf-picker {
+  display: grid;
+  gap: 12px;
+  justify-items: stretch;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
+}
+
+.bf-picker > .btn {
+  justify-self: center;
 }
 
 .bf {

@@ -24,6 +24,7 @@ import {
   fitsIdentity,
   isUnique,
   MAX_COPIES,
+  presetToDeck,
   suggestCards,
   validateDeck,
 } from '../lib/deck'
@@ -136,6 +137,21 @@ export function DeckBuilder() {
           </AnimatePresence>
           <StatusBar deck={deck} onIssues={() => setTab('regole')} />
         </>
+      )}
+
+      {deck.preset && (
+        <button
+          type="button"
+          className="link-more builder-delete"
+          onClick={async () => {
+            if (!confirm(`Ripristinare “${deck.name}” con la lista ufficiale? Le modifiche fatte a questo mazzo andranno perse.`)) return
+            const presets: { name: string }[] = await fetch(asset('data/decks.json')).then((r) => r.json())
+            const original = presets.find((p) => `preset-${p.name.toLowerCase()}` === deck.id)
+            if (original) saveDeck({ ...presetToDeck(original as never, db), name: deck.name })
+          }}
+        >
+          Ripristina la lista ufficiale
+        </button>
       )}
 
       {!deck.preset && (
@@ -418,23 +434,77 @@ function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => 
         <AnimatePresence>
           {pickBf && deck.battlefields.length < BATTLEFIELDS_REQUIRED && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
-              <div className="bf-picker">
-                {bfOptions
-                  .filter((b) => !deck.battlefields.some((x) => db.byId.get(x)?.name === b.name))
-                  .sort((a, b) => (names.get(b.name) ?? 0) - (names.get(a.name) ?? 0))
-                  .map((b) => (
-                    <button key={b.id} type="button" className="bf" onClick={() => edit((d) => void d.battlefields.push(b.id))}>
-                      <img src={asset(b.image_file)} alt="" loading="lazy" />
-                      <span>
-                        {b.name} {names.get(b.name) ? <em className="ok">· ce l’hai</em> : null}
-                      </span>
-                    </button>
-                  ))}
-              </div>
+              <BattlefieldPicker
+                options={bfOptions.filter((b) => !deck.battlefields.some((x) => db.byId.get(x)?.name === b.name))}
+                owned={names}
+                onPick={(b) => edit((d) => void d.battlefields.push(b.id))}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </section>
+    </div>
+  )
+}
+
+const BF_PAGE = 12
+
+/** Elenco dei campi di battaglia legali, con ricerca per nome, filtro "i miei" e pagine. */
+function BattlefieldPicker({ options, owned, onPick }: { options: Card[]; owned: Map<string, number>; onPick: (b: Card) => void }) {
+  const mineCount = options.filter((b) => owned.get(b.name)).length
+  const [onlyMine, setOnlyMine] = useState(mineCount > 0)
+  const [q, setQ] = useState('')
+  const [page, setPage] = useState(1)
+  const needle = q.trim().toLowerCase()
+  const list = options
+    .filter((b) => !onlyMine || owned.get(b.name))
+    .filter((b) => !needle || b.name.toLowerCase().includes(needle) || cardParagraphs(b.text).some((p) => p.toLowerCase().includes(needle)))
+    .sort((a, b) => Number(!!owned.get(b.name)) - Number(!!owned.get(a.name)) || a.name.localeCompare(b.name))
+  const shown = list.slice(0, page * BF_PAGE)
+
+  return (
+    <div className="bf-picker">
+      <div className="search">
+        <input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value)
+            setPage(1)
+          }}
+          placeholder="Cerca un campo per nome o effetto"
+          aria-label="Cerca campi di battaglia"
+        />
+      </div>
+      <div className="chips">
+        <button className="chip" aria-pressed={onlyMine} onClick={() => (setOnlyMine(true), setPage(1))}>
+          I miei ({mineCount})
+        </button>
+        <button className="chip" aria-pressed={!onlyMine} onClick={() => (setOnlyMine(false), setPage(1))}>
+          Tutti ({options.length})
+        </button>
+      </div>
+      {list.length === 0 ? (
+        <p className="empty">
+          Nessun campo trovato.
+          {onlyMine && ' Prova con “Tutti”: potresti non possederlo.'}
+        </p>
+      ) : (
+        <div className="bf-grid">
+          {shown.map((b) => (
+            <button key={b.id} type="button" className="bf" onClick={() => onPick(b)}>
+              <img src={asset(b.image_file)} alt="" loading="lazy" />
+              <span>
+                {b.name} {owned.get(b.name) ? <em className="ok">· ce l’hai</em> : null}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {shown.length < list.length && (
+        <button type="button" className="btn btn-small" onClick={() => setPage((p) => p + 1)}>
+          Mostra altri ({list.length - shown.length})
+        </button>
+      )}
     </div>
   )
 }
@@ -460,7 +530,6 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
       db.cards.filter(
         (c) =>
           !isLegend(c) &&
-          !isBattlefield(c) &&
           !isRune(c) &&
           !/Token/.test(c.type) &&
           c.type !== '' &&
@@ -471,19 +540,36 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
     ).slice(0, 40)
   }, [q, db, legend])
 
-  const inDeck = (c: Card) => Object.entries(deck.main).reduce((a, [id, n]) => a + (db.byId.get(id)?.name === c.name ? n : 0), 0)
-  const add = (c: Card) => edit((d) => void (d.main[c.id] = (d.main[c.id] ?? 0) + 1))
+  // I campi di battaglia vanno nella loro sezione (3 con nomi diversi, 103.5), il resto nel mazzo principale
+  const inDeck = (c: Card) =>
+    isBattlefield(c)
+      ? deck.battlefields.filter((id) => db.byId.get(id)?.name === c.name).length
+      : Object.entries(deck.main).reduce((a, [id, n]) => a + (db.byId.get(id)?.name === c.name ? n : 0), 0)
+  const add = (c: Card) =>
+    edit((d) => {
+      if (!isBattlefield(c)) d.main[c.id] = (d.main[c.id] ?? 0) + 1
+      else if (d.battlefields.length < BATTLEFIELDS_REQUIRED) d.battlefields.push(c.id)
+    })
+  const maxFor = (c: Card) => (isBattlefield(c) ? (deck.battlefields.length < BATTLEFIELDS_REQUIRED ? 1 : 0) : isUnique(c) ? 1 : MAX_COPIES)
 
   return (
     <div className="add-tab">
       <div className="search" style={{ marginTop: 16 }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca una carta legale per questo mazzo" aria-label="Cerca carte" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca una carta o un campo di battaglia legale" aria-label="Cerca carte" />
       </div>
 
       {q.trim() ? (
         <ul className="rows" style={{ marginTop: 14 }}>
           {legal.map((c) => (
-            <SuggestionRow key={c.id} card={c} inDeck={inDeck(c)} owned={names.get(c.name) ?? 0} reasons={[]} onAdd={() => add(c)} />
+            <SuggestionRow
+              key={c.id}
+              card={c}
+              inDeck={inDeck(c)}
+              owned={names.get(c.name) ?? 0}
+              reasons={isBattlefield(c) && inDeck(c) === 0 && deck.battlefields.length >= BATTLEFIELDS_REQUIRED ? ['Hai già 3 campi: togline uno per aggiungerlo'] : []}
+              max={maxFor(c)}
+              onAdd={() => add(c)}
+            />
           ))}
           {!legal.length && <p className="empty">Nessuna carta legale con questo nome o testo.</p>}
         </ul>
@@ -524,9 +610,22 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
   )
 }
 
-function SuggestionRow({ card, inDeck, owned, reasons, onAdd }: { card: Card; inDeck: number; owned: number; reasons: string[]; onAdd: () => void }) {
+function SuggestionRow({
+  card,
+  inDeck,
+  owned,
+  reasons,
+  onAdd,
+  max = isUnique(card) ? 1 : MAX_COPIES,
+}: {
+  card: Card
+  inDeck: number
+  owned: number
+  reasons: string[]
+  onAdd: () => void
+  max?: number
+}) {
   const location = useLocation()
-  const max = isUnique(card) ? 1 : MAX_COPIES
   return (
     <motion.li layout className="row row-suggest" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <Link to={`/carta/${card.id}`} state={{ background: location }} className="row-art">
