@@ -6,6 +6,10 @@
 - I suggerimenti del deck builder sono euristiche: devono sempre mostrare il motivo e non presentarsi come regole.
 - Quando esce un nuovo Core Rules: aggiornare `rules/`, rilanciare `scripts/extract_rules.py`, ricontrollare le voci del glossario toccate e `npx vitest run`.
 
+## Flusso di lavoro
+- Le modifiche si fanno sul ramo `prova`: Vercel crea un link di anteprima e l’utente le prova dal telefono.
+- Si portano su `main` (il sito principale) solo quando l’utente le approva.
+
 ## Dati
 - `scripts/update_cards.py` rigenera carte e immagini dalla galleria ufficiale (richiede accesso a playriftbound.com e cmsassets.rgpub.io). Unisce più download perché la galleria a volte omette carte.
 - Le immagini delle carte si caricano dal CDN di Riot (`cardImage`): non rimetterle in `public/`, ogni deploy su Vercel le ricopierebbe (~66 MB). `images/` è solo un archivio.
