@@ -22,7 +22,8 @@ npm run dev
 | `images/` | Archivio delle immagini (WebP 500 px), **non pubblicato** | Galleria ufficiale |
 | `public/data/rules.json` | Core Rules suddivise per numero | `rules/core-rules-*.txt` (`scripts/extract_rules.py`) |
 | `public/data/collection.json` | Collezione iniziale | File Excel di partenza |
-| `public/data/decks.json` | 6 mazzi precostruiti | File Excel, verificati sulle liste ufficiali |
+| `public/data/decks.json` | 6 mazzi precostruiti iniziali | File Excel, identici alle liste ufficiali |
+| `public/data/products.json` | Mazzi ufficiali in vendita (8 mazzi, 6 prodotti) | Pagine ufficiali di Riot (`scripts/import_precons.py`) |
 
 La galleria ufficiale contiene errori su **Radiance**: tipi e domini sbagliati o vuoti su decine di carte. `scripts/update_cards.py` li corregge (tipo dal testo ufficiale di accessibilità, dominio dalla numerazione per blocchi) e il test `src/test/content.test.ts` lo verifica: i 6 mazzi precostruiti devono risultare legali.
 

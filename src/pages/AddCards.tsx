@@ -5,7 +5,8 @@ import { useDb } from '../lib/useDb'
 import { useVault } from '../lib/store'
 import type { Card } from '../lib/types'
 import { asset, cardImage, isBasePrinting, SET_ORDER, sortCards } from '../lib/data'
-import { presetToDeck, validateDeck } from '../lib/deck'
+import { validateDeck } from '../lib/deck'
+import { type Product, presetDeckId, productDeckToDeck } from '../lib/products'
 import { deckFromLines, linesToCounts, parseList } from '../lib/importList'
 import './addCards.css'
 
@@ -254,22 +255,14 @@ function AddByCode() {
 
 function AddDeck() {
   const db = useDb()
-  const decks = useVault((s) => s.decks)
   const setDeckOwned = useVault((s) => s.setDeckOwned)
   const saveDeck = useVault((s) => s.saveDeck)
   const addMany = useVault((s) => s.addMany)
   const navigate = useNavigate()
-  const [presets, setPresets] = useState<{ name: string }[]>([])
   const [text, setText] = useState('')
   const [deckName, setDeckName] = useState('')
   const [makeDeck, setMakeDeck] = useState(true)
   const [done, setDone] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch(asset('data/decks.json'))
-      .then((r) => r.json())
-      .then(setPresets)
-  }, [])
 
   const lines = useMemo(() => (text.trim() ? parseList(text, db) : []), [text, db])
   const matched = lines.filter((l) => l.card)
@@ -295,47 +288,10 @@ function AddDeck() {
 
   return (
     <div className="add-deck">
-      <section className="section">
-        <h2>Mazzi precostruiti</h2>
-        <p className="muted picker-help">Un tocco e tutte le carte della scatola (Legend, campi e rune compresi) entrano nella collezione.</p>
-        <div className="preset-list">
-          {presets.map((p) => {
-            const id = `preset-${p.name.toLowerCase()}`
-            const deck = decks.find((d) => d.id === id)
-            const official = presetToDeck(p as never, db)
-            const champ = official.championId ? db.byId.get(official.championId) : undefined
-            const added = !!deck?.addedToCollection
-            return (
-              <div key={id} className={`preset${added ? ' preset-on' : ''}`}>
-                {champ && <img src={cardImage(champ)} alt="" loading="lazy" />}
-                <div className="preset-body">
-                  <strong>{p.name}</strong>
-                  <span className="tiny">{added ? 'Già nella collezione' : 'Non ancora aggiunto'}</span>
-                </div>
-                {added ? (
-                  <button type="button" className="link-more" onClick={() => deck && confirm(`Togliere dalla collezione le carte del mazzo ${p.name}?`) && setDeckOwned(deck, false)}>
-                    Togli
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-small"
-                    onClick={() => {
-                      if (!deck) saveDeck({ ...official, updatedAt: Date.now() })
-                      setDeckOwned({ ...official, id }, true)
-                    }}
-                  >
-                    Ho questo mazzo
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </section>
+      <ProductCatalog />
 
       <section className="section">
-        <h2>Un altro mazzo: incolla la lista</h2>
+        <h2>Non è in elenco? Incolla la lista</h2>
         <p className="muted picker-help">
           Copia la lista dal sito di Riot o dalla scatola, una carta per riga: “3 Shadow Assassin”, “3x Shadow Assassin” o solo il nome.
         </p>
@@ -392,5 +348,141 @@ function AddDeck() {
         )}
       </section>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Catalogo dei prodotti ufficiali (liste pubblicate da Riot)
+
+function ProductCatalog() {
+  const db = useDb()
+  const decks = useVault((s) => s.decks)
+  const saveDeck = useVault((s) => s.saveDeck)
+  const setDeckOwned = useVault((s) => s.setDeckOwned)
+  const [products, setProducts] = useState<Product[]>([])
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(asset('data/products.json'))
+      .then((r) => r.json())
+      .then(setProducts)
+  }, [])
+
+  function add(p: Product, skip = new Set<string>()) {
+    for (const d of p.decks) {
+      const official = productDeckToDeck(d, db, skip)
+      // il mazzo compare anche nel deck builder, se non c'è già
+      if (!decks.some((x) => x.id === official.id)) saveDeck(official)
+      setDeckOwned(official, true)
+    }
+    setConfirming(null)
+    setJustAdded(p.id)
+  }
+
+  function remove(p: Product) {
+    if (!confirm(`Togliere dalla collezione le carte di “${p.name}”?`)) return
+    for (const d of p.decks) {
+      const deck = useVault.getState().decks.find((x) => x.id === presetDeckId(d.name))
+      if (deck?.addedToCollection) setDeckOwned(deck, false)
+    }
+  }
+
+  return (
+    <section className="section">
+      <h2>Mazzi ufficiali in vendita</h2>
+      <p className="muted picker-help">
+        Tocca quello che hai comprato: tutte le carte della scatola (Legend, campi e rune compresi) entrano nella collezione e il mazzo compare in Mazzi. Liste prese dal sito ufficiale di Riot.
+      </p>
+      <div className="product-list">
+        {products.map((p) => {
+          const added = p.decks.every((d) => decks.find((x) => x.id === presetDeckId(d.name))?.addedToCollection)
+          const uncertain = p.decks.flatMap((d) => d.cards.filter((e) => e.uncertain).map((e) => ({ ...e, deck: d.name })))
+          const champs = p.decks
+            .map((d) => productDeckToDeck(d, db).championId)
+            .map((id) => (id ? db.byId.get(id) : undefined))
+            .filter((c) => c != null)
+          const total = p.decks.reduce((a, d) => a + d.cards.reduce((b, e) => b + e.qty, 0), 0)
+          return (
+            <motion.div key={p.id} layout className={`product${added ? ' product-on' : ''}`}>
+              <div className="product-art">
+                {champs.map((c) => (
+                  <img key={c.id} src={cardImage(c)} alt="" loading="lazy" />
+                ))}
+              </div>
+              <div className="product-body">
+                <span className="product-kind">
+                  {p.kind} · {p.set}
+                </span>
+                <strong>{p.name.replace(/^.*?:\s*/, '')}</strong>
+                <span className="tiny">
+                  {p.decks.length > 1 ? `${p.decks.length} mazzi, ` : ''}
+                  {total} carte ·{' '}
+                  <a href={p.source} target="_blank" rel="noreferrer" className="product-source">
+                    lista ufficiale
+                  </a>
+                </span>
+                {added ? (
+                  <div className="product-actions">
+                    <span className="ok product-done">{justAdded === p.id ? '✓ Aggiunto alla collezione' : '✓ Nella tua collezione'}</span>
+                    <button type="button" className="link-more" onClick={() => remove(p)}>
+                      Togli
+                    </button>
+                  </div>
+                ) : (
+                  <div className="product-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-small"
+                      onClick={() => (uncertain.length ? setConfirming(p.id) : add(p))}
+                    >
+                      Ho questo prodotto
+                    </button>
+                  </div>
+                )}
+              </div>
+              <AnimatePresence>
+                {confirming === p.id && (
+                  <motion.div
+                    className="product-confirm"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                  >
+                    {uncertain.map((e) => {
+                      const guess = db.byId.get(e.id)!
+                      return (
+                        <div key={e.uncertain!.printed} className="uncertain">
+                          <img src={cardImage(guess)} alt={guess.name} />
+                          <div>
+                            <p>
+                              <strong>Controlla una carta.</strong> {e.uncertain!.note}
+                            </p>
+                            <p className="tiny">
+                              Mazzo {e.deck}, {e.qty} copie. Guarda nella scatola se hai {e.qty} copie di questa carta ({guess.code}).
+                            </p>
+                            <div className="uncertain-actions">
+                              <button type="button" className="btn btn-primary btn-small" onClick={() => add(p)}>
+                                Sì, è {guess.name}
+                              </button>
+                              <button type="button" className="btn btn-small" onClick={() => add(p, new Set([e.uncertain!.printed]))}>
+                                Aggiungi senza questa carta
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )
+        })}
+      </div>
+      <p className="tiny" style={{ marginTop: 10 }}>
+        Mancano i mazzi di Origins (Champion Deck di Jinx, Viktor, Lee Sin e il Proving Grounds): Riot non ha pubblicato le loro liste. Se ne hai uno, incolla qui sotto la lista stampata nella scatola.
+      </p>
+    </section>
   )
 }

@@ -13,6 +13,7 @@
 ## Dati
 - `scripts/update_cards.py` rigenera carte e immagini dalla galleria ufficiale (richiede accesso a playriftbound.com e cmsassets.rgpub.io). Unisce più download perché la galleria a volte omette carte.
 - Le immagini delle carte si caricano dal CDN di Riot (`cardImage`): non rimetterle in `public/`, ogni deploy su Vercel le ricopierebbe (~66 MB). `images/` è solo un archivio.
+- `scripts/import_precons.py` estrae le liste ufficiali dei mazzi in vendita in `public/data/products.json`. Solo prodotti con lista pubblicata da Riot (non ci sono quelle dei mazzi di Origins). I refusi delle pagine sono in `TYPOS`; i nomi non verificabili vanno in `UNCERTAIN` e l'app chiede conferma all'utente.
 - I dati di Radiance nella galleria hanno tipi e domini sbagliati: vedi `fix_radiance_domains` e la correzione del tipo in `build()`.
 
 ## UI
