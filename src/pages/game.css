@@ -90,106 +90,19 @@
   font-size: 14px;
 }
 
-.deck-choices {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-}
 
-.deck-choice {
-  display: flex;
-  align-items: stretch;
-  border-radius: var(--r-md);
-  background: rgb(255 255 255 / 0.035);
-  border: 1px solid var(--line);
-  overflow: hidden;
-  transition: border-color 200ms;
-}
 
-.deck-choice-on {
-  border-color: var(--magenta);
-  background: rgb(255 62 165 / 0.08);
-}
 
-.deck-choice-off {
-  opacity: 0.72;
-}
 
-.deck-choice-main {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 52px 1fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  text-align: left;
-  min-width: 0;
-}
 
-.deck-choice-main:disabled {
-  cursor: default;
-}
 
-.deck-choice-art {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--ink-2);
-}
 
-.deck-choice-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 20%;
-}
 
-.deck-choice-body {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
 
-.deck-choice-body strong {
-  font-family: var(--font-display);
-  font-size: 16px;
-}
 
-.cov-bar {
-  height: 5px;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.08);
-  overflow: hidden;
-}
 
-.cov-bar span {
-  display: block;
-  height: 100%;
-  transform-origin: left;
-  background: linear-gradient(90deg, var(--violet), var(--magenta));
-}
 
-.deck-choice-check {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  font-weight: 700;
-  background: var(--magenta);
-}
 
-.deck-choice-more {
-  flex: none;
-  padding: 0 12px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-2);
-  border-left: 1px solid var(--line);
-}
 
 .deck-missing {
   overflow: hidden;
@@ -1883,4 +1796,156 @@ body.no-scroll {
 .pc-play small {
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* Scelta del mazzo: copertine con l'illustrazione del campione e i colori dei domini della Legend */
+.deck-group + .deck-group {
+  margin-top: 22px;
+}
+
+.deck-group h3 {
+  margin: 14px 0 10px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text-2);
+}
+
+.deck-covers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+}
+
+.deck-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  padding: 2px;
+  border-radius: 16px;
+  /* bordo sfumato nei due domini */
+  background: linear-gradient(150deg, var(--c1), var(--c2));
+  text-align: left;
+  color: inherit;
+  box-shadow: 0 14px 30px -18px var(--c1);
+  transition: box-shadow 0.2s;
+}
+
+.deck-cover:focus-visible {
+  outline: 2px solid var(--magenta);
+  outline-offset: 3px;
+}
+
+.deck-cover-art {
+  position: absolute;
+  inset: 2px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ink-2);
+}
+
+/* si vede l'illustrazione, non il riquadro del testo della carta */
+.deck-cover-art img {
+  width: 100%;
+  height: 160%;
+  object-fit: cover;
+  object-position: 50% 8%;
+  /* via la cornice della carta (costo e barra in alto) */
+  transform: scale(1.28) translateY(-6%);
+  transform-origin: 50% 0;
+}
+
+.deck-cover-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgb(10 5 24 / 0.55) 62%, rgb(10 5 24 / 0.96) 100%);
+}
+
+.deck-cover-info {
+  position: absolute;
+  inset: auto 2px 2px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 11px 11px;
+}
+
+.deck-cover-info strong {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.05;
+}
+
+.deck-cover-doms {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.deck-cover-doms > span {
+  margin-left: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-cover-on {
+  background: var(--magenta);
+  box-shadow:
+    0 0 0 3px rgb(255 62 165 / 0.35),
+    0 16px 34px -16px var(--magenta);
+}
+
+.deck-cover-check {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--magenta);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+}
+
+.deck-cover-tag {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(10 5 24 / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.18);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.deck-off {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.deck-off button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--line-strong);
+  color: var(--text-2);
+  text-align: left;
 }

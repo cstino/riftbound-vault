@@ -9,6 +9,7 @@ import { Match, deckCoverage, deckToSpec } from '../lib/game'
 import { useGame } from '../lib/gameStore'
 import type { Deck } from '../lib/types'
 import { CardText } from '../components/CardText'
+import { DomainIcon } from '../components/Icons'
 import './game.css'
 
 type Side = 'mine' | 'pc'
@@ -172,37 +173,86 @@ export function PlayVsPc() {
             <motion.div className="sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 360, damping: 34 }}>
               <span className="sheet-grip" aria-hidden />
               <div className="sheet-body">
-                <h2>{picking === 'mine' ? 'Il tuo mazzo' : 'Mazzo del PC'}</h2>
-                <p className="tiny muted">Si giocano solo i mazzi con tutte le carte implementate nel motore.</p>
-                <ul className="deck-choices">
-                  {rows.map(({ deck, cov, champ }) => {
-                    const pct = Math.round((cov.done / Math.max(1, cov.total)) * 100)
-                    const selected = pick[picking] === deck.id
-                    return (
-                      <li key={deck.id}>
-                        <div className={`deck-choice${selected ? ' deck-choice-on' : ''}${cov.playable ? '' : ' deck-choice-off'}`}>
-                          <button type="button" className="deck-choice-main" disabled={!cov.playable} onClick={() => choose(deck.id)}>
-                            <span className="deck-choice-art">{champ && <img src={cardImage(champ)} alt="" loading="lazy" />}</span>
-                            <span className="deck-choice-body">
-                              <strong>{deck.name}</strong>
-                              <span className="cov-bar" aria-hidden>
-                                <span style={{ transform: `scaleX(${pct / 100})` }} />
+                <h2>{picking === 'mine' ? 'Scegli il tuo mazzo' : 'Scegli il mazzo del PC'}</h2>
+                {(() => {
+                  const playable = rows.filter((r) => r.cov.playable)
+                  const official = playable.filter((r) => r.deck.preset || r.deck.id.startsWith('preset-'))
+                  const custom = playable.filter((r) => !official.includes(r))
+                  const off = rows.filter((r) => !r.cov.playable)
+                  const other = picking === 'mine' ? pick.pc : pick.mine
+                  const grid = (list: typeof rows) => (
+                    <ul className="deck-covers">
+                      {list.map(({ deck, champ }) => {
+                        const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
+                        const doms = legend?.domains ?? []
+                        const selected = pick[picking] === deck.id
+                        const colors = doms.length ? doms.map((d) => `var(--${d.toLowerCase()})`) : ['var(--violet)']
+                        return (
+                          <li key={deck.id}>
+                            <motion.button
+                              type="button"
+                              className={`deck-cover${selected ? ' deck-cover-on' : ''}`}
+                              style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}
+                              onClick={() => choose(deck.id)}
+                              whileTap={{ scale: 0.96 }}
+                              aria-pressed={selected}
+                            >
+                              <span className="deck-cover-art">{champ && <img src={cardImage(champ)} alt="" loading="lazy" />}</span>
+                              <span className="deck-cover-info">
+                                <strong>{deck.name}</strong>
+                                <span className="deck-cover-doms">
+                                  {doms.map((d) => (
+                                    <DomainIcon key={d} domain={d} size={16} />
+                                  ))}
+                                  <span>{legend?.name.split(' - ')[1] ?? ''}</span>
+                                </span>
                               </span>
-                              <span className="tiny">{cov.playable ? 'Giocabile' : `${pct}% implementato · ne mancano ${cov.missing.length}`}</span>
-                            </span>
-                            {selected && <span className="deck-choice-check">✓</span>}
-                          </button>
-                          {!cov.playable && cov.missing.length > 0 && (
-                            <button type="button" className="deck-choice-more" onClick={() => setOpen(open === deck.id ? null : deck.id)} aria-expanded={open === deck.id}>
-                              {open === deck.id ? 'Nascondi' : 'Quali'}
-                            </button>
-                          )}
-                        </div>
-                        {open === deck.id && <p className="deck-missing">{cov.missing.join(' · ')}</p>}
-                      </li>
-                    )
-                  })}
-                </ul>
+                              {selected && (
+                                <span className="deck-cover-check" aria-hidden>
+                                  ✓
+                                </span>
+                              )}
+                              {!selected && other === deck.id && <span className="deck-cover-tag">{picking === 'mine' ? 'PC' : 'Tu'}</span>}
+                            </motion.button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )
+                  return (
+                    <>
+                      <section className="deck-group">
+                        <h3>Mazzi ufficiali</h3>
+                        {grid(official)}
+                      </section>
+                      {custom.length > 0 && (
+                        <section className="deck-group">
+                          <h3>I tuoi mazzi</h3>
+                          {grid(custom)}
+                        </section>
+                      )}
+                      {off.length > 0 && (
+                        <section className="deck-group deck-group-off">
+                          <h3>Non ancora giocabili</h3>
+                          <p className="tiny muted">Usano carte che il motore della partita non conosce ancora.</p>
+                          <ul className="deck-off">
+                            {off.map(({ deck, cov }) => (
+                              <li key={deck.id}>
+                                <button type="button" onClick={() => setOpen(open === deck.id ? null : deck.id)} aria-expanded={open === deck.id}>
+                                  <strong>{deck.name}</strong>
+                                  <span className="tiny">
+                                    {cov.missing.length === 1 ? 'Manca 1 carta' : `Mancano ${cov.missing.length} carte`} · {open === deck.id ? 'nascondi' : 'quali'}
+                                  </span>
+                                </button>
+                                {open === deck.id && <p className="deck-missing">{cov.missing.join(', ')}</p>}
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </motion.div>
           </motion.div>
