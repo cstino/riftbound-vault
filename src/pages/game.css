@@ -1524,7 +1524,7 @@ body.no-scroll {
 }
 
 .pc-play {
-  pointer-events: none;
+  cursor: pointer;
   position: fixed;
   z-index: 50;
   left: 0;
@@ -1869,4 +1869,9 @@ body.no-scroll {
 .field-random img {
   width: 22px;
   border-radius: 3px;
+}
+
+.pc-play small {
+  font-size: 11px;
+  color: var(--text-3);
 }

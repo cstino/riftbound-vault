@@ -184,11 +184,14 @@ function Spotlight({ g }: { g: Game }) {
     const fresh = g.log.slice(seen.current).map((entry, i) => ({ key: seen.current + i, entry }))
     seen.current = g.log.length
     const hit = fresh.filter((x) => x.entry.player === OPP && x.entry.card && !x.entry.card.id.startsWith('token')).pop()
-    if (!hit) return
-    setShown(hit)
-    const t = setTimeout(() => setShown(null), 1800)
-    return () => clearTimeout(t)
+    if (hit) setShown(hit)
   }, [n, g])
+  // il timer dipende solo dalla carta mostrata: nuove righe della cronaca non lo annullano
+  useEffect(() => {
+    if (!shown) return
+    const t = setTimeout(() => setShown(null), 2600)
+    return () => clearTimeout(t)
+  }, [shown])
   return (
     <AnimatePresence>
       {shown && (
@@ -204,6 +207,7 @@ function Spotlight({ g }: { g: Game }) {
         >
           <img src={cardImage(shown.entry.card!)} alt={shown.entry.card!.name} />
           <span>{shown.entry.text}</span>
+          <small>Tocca per chiudere</small>
         </motion.div>
       )}
     </AnimatePresence>
