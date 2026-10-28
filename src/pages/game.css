@@ -1194,11 +1194,9 @@ body.no-scroll {
   height: 42px;
   border-radius: 4px;
   transform-origin: 50% 0;
-  background:
-    radial-gradient(circle at 50% 50%, rgb(255 62 165 / 0.7) 0 18%, transparent 19%),
-    repeating-linear-gradient(45deg, rgb(140 91 255 / 0.5) 0 3px, transparent 3px 7px),
-    linear-gradient(160deg, var(--ink-3), var(--ink-1));
-  border: 1.5px solid rgb(176 148 255 / 0.6);
+  /* dorso ufficiale del mazzo principale (blu), da public/backs */
+  background: #033852 var(--back-main) center / cover no-repeat;
+  border: 0;
   box-shadow: 0 6px 12px -6px #000;
 }
 
@@ -1832,4 +1830,43 @@ body.no-scroll {
 .field-go {
   width: 100%;
   height: 50px;
+}
+
+.facedown {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.facedown-back {
+  position: static;
+  width: 16px;
+  height: 22px;
+  border-radius: 2px;
+}
+
+.rune-deck {
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 18px;
+  margin-right: 2px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #183a52;
+  background: #f0f0ec center / cover no-repeat;
+  text-shadow: 0 0 3px #fff;
+}
+
+.field-random {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.field-random img {
+  width: 22px;
+  border-radius: 3px;
 }

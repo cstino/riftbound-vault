@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { cardImage } from '../lib/data'
+import { asset, cardImage } from '../lib/data'
 import { useDb } from '../lib/useDb'
 import { useGame } from '../lib/gameStore'
 import { Match, deckToSpec } from '../lib/game'
@@ -80,7 +80,7 @@ function Board({ match, version }: { match: Match; version: number }) {
   const openObj = (uid: number) => setSheet({ kind: 'obj', uid })
 
   return (
-    <div className="table">
+    <div className="table" style={{ '--back-main': `url(${new URL(asset('backs/main.webp'), window.location.href).href})` } as React.CSSProperties}>
       <div className="table-corner">
         <Link to="/playground/partita" className="corner-btn" aria-label="Esci dalla partita">
           ✕
@@ -254,6 +254,9 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
         </div>
         <Pips n={pl.points} max={g.victory} />
         <span className="runes" aria-label="Rune">
+          <span className="rune-deck" title="Rune ancora nel mazzo delle rune" style={{ backgroundImage: `url(${asset('backs/rune.webp')})` }}>
+            {pl.runeDeck.length}
+          </span>
           {runes.map((r) => (
             <span key={r.uid} className={`rune${r.exhausted ? ' rune-off' : ''}`} title={r.card.name}>
               <DomainIcon domain={r.card.domains[0]} size={12} />
@@ -354,6 +357,7 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
         <div className="bf-extra tiny">
           {face && (
             <button type="button" className={`facedown${actionsFor(face.uid).length ? ' is-actionable' : ''}`} onClick={() => (face.controller === ME ? onObj(face.uid) : undefined)}>
+              <span className="card-back facedown-back" aria-hidden />
               {face.controller === ME ? `Nascosta: ${face.card.name}` : 'Carta nascosta del PC'}
             </button>
           )}

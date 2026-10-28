@@ -102,6 +102,7 @@ export function PlayVsPc() {
           ))}
         </div>
         <button type="button" className="btn field-random" onClick={() => start(null)}>
+          <img src={asset('backs/legend.webp')} alt="" />
           Estrai a caso (come nel Duel, regola 487.5)
         </button>
 
