@@ -27,9 +27,11 @@ export function AuthGate({ children, fallback }: { children: (userId: string) =>
   if (!supabase) {
     return (
       <div className="login-shell">
-        <div className="login-card">
-          <h1>Login non configurato</h1>
-          <p className="muted">Mancano VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nelle variabili d’ambiente.</p>
+        <div className="login-main">
+          <div className="login-form">
+            <h1>Login non configurato</h1>
+            <p className="login-note">Manca la configurazione di Supabase.</p>
+          </div>
         </div>
       </div>
     )
