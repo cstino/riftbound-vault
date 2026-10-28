@@ -2,6 +2,7 @@
 
 ## Regola principale: niente invenzioni sulle regole
 - Ogni spiegazione di gioco (glossario `src/data/glossary.ts`, guida `src/data/learn.ts`, messaggi del validatore `src/lib/deck.ts`) deve derivare dal Core Rules in `rules/` e citare il numero di regola.
+- Il quiz (`src/data/quiz.ts`) segue la stessa regola: ogni domanda cita le regole da cui deriva e la spiegazione le riassume; `src/test/quiz.test.ts` controlla regole citate, opzioni e risposte.
 - Gli esempi usano carte reali di `public/data/cards.json`; il test controlla che contengano la parola chiave spiegata.
 - I suggerimenti del deck builder sono euristiche: devono sempre mostrare il motivo e non presentarsi come regole.
 - Quando esce un nuovo Core Rules: aggiornare `rules/`, rilanciare `scripts/extract_rules.py`, ricontrollare le voci del glossario toccate e `npx vitest run`.

@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import { LEARN } from '../data/learn'
 import { GLOSSARY } from '../data/glossary'
 import './learn.css'
+import './quiz.css'
 
 const KIND_TITLE = { keyword: 'Parole chiave', action: 'Azioni di gioco', concept: 'Concetti' } as const
 
@@ -22,6 +23,14 @@ export function Learn() {
           <p>Tutto è tratto dal Core Rules ufficiale: ogni spiegazione indica la regola da cui viene.</p>
         </div>
       </header>
+
+      <Link to="/impara/quiz" className="quiz-entry">
+        <span>
+          <strong>Mettiti alla prova</strong>
+          <span className="muted">Quiz sulle regole ufficiali, con spiegazione dopo ogni risposta.</span>
+        </span>
+        <span className="btn btn-primary btn-small">Inizia</span>
+      </Link>
 
       <section>
         <ol className="chapters">
