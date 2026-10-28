@@ -29,6 +29,9 @@ export interface Mod {
   tank?: boolean
   /** "Can't be chosen by enemy spells and abilities this turn". */
   untargetable?: boolean
+  ganking?: boolean
+  /** Tactical Retreat: la prossima morte in questo turno è sostituita. */
+  retreat?: boolean
 }
 
 export interface Obj {
@@ -46,6 +49,8 @@ export interface Obj {
   prevent: number
   stunned: boolean
   empowered: boolean
+  /** Un solo buff per unità, vale +1 Might (702.3, 703). */
+  buff: boolean
   /** Equipaggiamento: unità a cui è attaccato (716). */
   attachedTo: number | null
   mods: Mod[]
@@ -184,6 +189,12 @@ export interface Game {
   log: LogEntry[]
   winner: PID | null
   victory: number
+  /** Unità morte in questo turno (Towering Pairofant). */
+  diedThisTurn: number
+  /** Effetti "the first time ... each turn": chiavi già usate in questo turno. */
+  turnFlags: Set<string>
+  /** Danni in eccesso assegnati da ciascun giocatore nel combattimento in corso. */
+  excess: [number, number]
   /** Regola con cui sono stati scelti i campi: a caso (487.5) o scelti (488.5). */
   bfRule: '487.5' | '488.5'
 }

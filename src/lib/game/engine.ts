@@ -4,7 +4,7 @@
 // e nel registro della partita.
 import type { Card, Domain } from '../types'
 import { DOMAINS } from '../types'
-import { autoAssign, checkAssignment, totalDamage, type CombatUnit, type Role } from '../combat'
+import { autoAssign, checkAssignment, lethalFor, totalDamage, type CombatUnit, type Role } from '../combat'
 import { implOf, type AbilityDef, type Cost, type Ctx, type Keywords, type TrigDef } from './registry'
 import type {
   ActionOpt,
@@ -89,7 +89,7 @@ export interface DeckSpec {
 
 const TOKEN_TYPE = 'Token Unit'
 
-export function tokenCard(name: string, might: number, tags: string[], text: string): Card {
+export function tokenCard(name: string, might: number | null, tags: string[], text: string, type = TOKEN_TYPE): Card {
   return {
     id: `token-${name.toLowerCase().replace(/\s+/g, '-')}`,
     code: '',
@@ -99,7 +99,7 @@ export function tokenCard(name: string, might: number, tags: string[], text: str
     set_size: null,
     name,
     short_name: name,
-    type: TOKEN_TYPE,
+    type,
     rarity: null,
     domains: [],
     energy: null,
@@ -129,6 +129,7 @@ function newObj(g: Game, card: Card, owner: PID, zone: Zone, token = false): Obj
     prevent: 0,
     stunned: false,
     empowered: false,
+    buff: false,
     attachedTo: null,
     mods: [],
     moves: 0,
@@ -162,6 +163,9 @@ export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string],
     log: [],
     winner: null,
     victory: 8, // 487.3
+    diedThisTurn: 0,
+    turnFlags: new Set(),
+    excess: [0, 0],
     bfRule: picks.some((x) => x != null) ? '488.5' : '487.5',
   }
   for (const p of [0, 1] as PID[]) {
@@ -255,6 +259,7 @@ export function moveZone(g: Game, o: Obj, zone: Zone, opts: { loc?: LocId | null
     prevent: 0,
     stunned: false,
     empowered: false,
+    buff: false,
     attachedTo: null,
     mods: [],
     moves: 0,
@@ -380,7 +385,18 @@ export function* banish(g: Game, o: Obj, responsible: PID): Gen<Obj> {
 }
 
 export function* kill(g: Game, list: Obj[], why: string, rule = '429'): Gen {
+  // Sostituzione "the next time it would die this turn, heal it, exhaust it, and recall it instead" (Tactical Retreat, 367)
+  const saved = list.filter((o) => o.mods.some((m) => m.retreat))
+  for (const o of saved) {
+    o.mods = o.mods.filter((m) => !m.retreat)
+    o.damage = 0
+    o.exhausted = true
+    log(g, `${o.card.name} non muore: guarisce, si esaurisce e torna nella base.`, '369', o.controller)
+    recall(g, o, '457')
+  }
+  list = list.filter((o) => !saved.includes(o))
   if (!list.length) return
+  g.diedThisTurn += list.filter(isUnit).length
   // 808.1.d.2: i Deathknell vanno in attesa prima che la carta lasci la board
   for (const o of list) {
     const def = implOf(o.card.name).deathknell
@@ -427,14 +443,41 @@ export function addMod(o: Obj, mod: Obj['mods'][number]) {
   o.mods.push(mod)
 }
 
-/** Gioca un token unità (180-187): entra esausto, come ogni unità (143.4). */
-export function* playToken(g: Game, p: PID, card: Card, loc: LocId): Gen<Obj> {
+/** Gioca un token (180-187): le unità entrano esauste (143.4), salvo indicazione contraria (184.1). */
+export function* playToken(g: Game, p: PID, card: Card, loc: LocId, opts: { ready?: boolean; exhausted?: boolean } = {}): Gen<Obj> {
   const o = newObj(g, card, p, 'board', true)
   o.loc = loc
-  o.exhausted = true
+  o.exhausted = opts.exhausted ?? (/Unit/.test(card.type) && !opts.ready)
   applyContested(g, o)
-  log(g, `${pname(g, p)} gioca un token ${card.name} (${card.might} Might) ${inLoc(g, loc)}.`, '185.2', p)
+  const what = card.might != null ? `${card.name} (${card.might} Might)` : card.name
+  log(g, `${pname(g, p)} gioca un token ${what}${o.exhausted ? '' : ' pronto'} ${inLoc(g, loc)}.`, '185.2', p)
   return o
+}
+
+/** Buff: un solo segnalino per unità, +1 Might (702-703). */
+export function buffUnit(g: Game, o: Obj) {
+  if (!alive(g, o) || o.buff) return // 702.3.a
+  o.buff = true
+  log(g, `${o.card.name} riceve un buff (+1 Might).`, '702.2.a', o.controller)
+}
+
+/** Predict: guarda le prime N carte e ricicla quelle che vuoi (437). */
+export function* predict(g: Game, p: PID, n = 1): Gen {
+  const pl = g.players[p]
+  const top = pl.deck.slice(0, n).map((u) => g.objs.get(u)!)
+  if (!top.length) return // 437.4.a: niente Burn Out
+  const r = yield* choose(
+    g,
+    p,
+    `Predict ${n}: quali carte ricicli in fondo al mazzo? (le altre restano in cima)`,
+    top.map((o) => ({ label: o.card.name, uid: o.uid, ai: (o.card.energy ?? 0) >= 6 ? 1 : -1 })),
+    0,
+    top.length,
+    { rule: '437' },
+  )
+  const picks = (r ?? []).map((i) => top[i])
+  for (const o of picks) moveZone(g, o, 'deck', { bottom: true })
+  log(g, `${pname(g, p)} fa Predict ${n} e ricicla ${picks.length} cart${picks.length === 1 ? 'a' : 'e'}.`, '437', p)
 }
 
 // ---------------------------------------------------------------- caratteristiche
@@ -461,6 +504,7 @@ export function kw(g: Game, o: Obj): Keywords {
     k.assault += m.assault ?? 0
     k.shield += m.shield ?? 0
     k.tank ||= !!m.tank
+    k.ganking ||= !!m.ganking
   }
   return k
 }
@@ -473,6 +517,7 @@ export function might(g: Game, o: Obj) {
   for (const m of o.mods) v += m.might ?? 0
   v += implOf(o.card.name).might?.(g, o) ?? 0
   for (const gear of board(g)) if (gear.attachedTo === o.uid) v += gear.card.might ?? 0
+  if (o.buff) v += 1 // 703
   if (isBf(o.loc)) v += implOf(bfAt(g, o.loc).card.name).bfMight?.(g, o) ?? 0
   const k = kw(g, o)
   if (o.role === 'attacker') v += k.assault // 807.1.c
@@ -526,8 +571,8 @@ const ANY: Domain[] = [...DOMAINS]
 export const withAny = (c: Cost, n: number): Cost => ({ energy: c.energy, power: [...c.power, ...Array(n).fill(ANY)] })
 
 interface PowerSource {
-  kind: 'pool' | 'rune'
-  domain: Domain
+  kind: 'pool' | 'rune' | 'gold'
+  domain: Domain | 'any'
   uid?: number
   exhausted?: boolean
 }
@@ -536,6 +581,8 @@ function powerSources(g: Game, p: PID): PowerSource[] {
   const pl = g.players[p]
   const out: PowerSource[] = []
   for (const d of DOMAINS) for (let i = 0; i < (pl.pool.power[d] ?? 0); i++) out.push({ kind: 'pool', domain: d })
+  // 187.5: un Gold pronto si può uccidere ed esaurire per aggiungere [A] (430.3, 445.2.c)
+  for (const o of board(g)) if (o.controller === p && o.card.name === 'Gold' && !o.exhausted) out.push({ kind: 'gold', domain: 'any', uid: o.uid })
   const runes = pl.runes.map((u) => g.objs.get(u)!)
   // Le rune già esaurite si riciclano per prime: hanno già dato la loro energia
   for (const r of [...runes.filter((r) => r.exhausted), ...runes.filter((r) => !r.exhausted)])
@@ -551,7 +598,8 @@ function matchPower(sources: PowerSource[], need: Domain[][]): number[] | null {
   const go = (k: number): boolean => {
     if (k === order.length) return true
     for (let s = 0; s < sources.length; s++) {
-      if (used.has(s) || !order[k].d.includes(sources[s].domain)) continue
+      const dom = sources[s].domain
+      if (used.has(s) || (dom !== 'any' && !order[k].d.includes(dom))) continue
       used.add(s)
       out[order[k].i] = s
       if (go(k + 1)) return true
@@ -589,12 +637,21 @@ export function pay(g: Game, p: PID, c: Cost) {
   for (const r of tapped) r.exhausted = true
   for (const i of match) {
     const s = sources[i]
-    if (s.kind === 'pool') pl.pool.power[s.domain] = (pl.pool.power[s.domain] ?? 0) - 1
+    if (s.kind === 'pool' && s.domain !== 'any') pl.pool.power[s.domain] = (pl.pool.power[s.domain] ?? 0) - 1
+  }
+  for (const i of match) {
+    const s = sources[i]
+    if (s.kind === 'gold') {
+      const gold = g.objs.get(s.uid!)!
+      gold.exhausted = true
+      log(g, `${pname(g, p)} uccide un Gold e aggiunge 1 Power di qualsiasi dominio.`, '187.5', p)
+      moveZone(g, gold, 'trash')
+    }
   }
   const recycled: string[] = []
   for (const uid of recycle) {
     const r = g.objs.get(uid)!
-    recycled.push(r.card.domains[0])
+    recycled.push(r.card.domains[0] as string)
     moveZone(g, r, 'runeDeck', { bottom: true }) // 417.1.b
   }
   const parts = []
@@ -968,6 +1025,15 @@ function* combatResolution(g: Game): Gen {
     log(g, `Danni di combattimento: gli attaccanti sommano ${aTot}, i difensori ${dTot}.`, '467.2', atkP)
     const aAssign = yield* assignDamage(g, atkP, aTot, def, 'defender')
     const dAssign = yield* assignDamage(g, defP, dTot, atk, 'attacker')
+    // Danni in eccesso: assegnati oltre il letale, sommati sul combattimento. Il Core Rules non li
+    // definisce: interpretazione dei giudici della community (riftjudge.com, rulings 11558 e 11675).
+    const excess = (targets: Obj[], assign: Record<string, number>, role: Role) =>
+      targets.reduce((sum, o) => {
+        const cu = toCombatUnit(g, o)
+        return sum + Math.max(0, (assign[cu.uid] ?? 0) - lethalFor(cu, role))
+      }, 0)
+    g.excess[atkP] = excess(def, aAssign, 'defender')
+    g.excess[defP] = excess(atk, dAssign, 'attacker')
     // 467.2.d: i danni assegnati vengono inflitti insieme
     for (const o of def) deal(g, o, aAssign[String(o.uid)] ?? 0, 'Il combattimento')
     for (const o of atk) deal(g, o, dAssign[String(o.uid)] ?? 0, 'Il combattimento')
@@ -1004,6 +1070,7 @@ function* combatResolution(g: Game): Gen {
     o.inCombat = false
   }
   g.showdown = null
+  g.excess = [0, 0]
   log(g, 'Il combattimento finisce.', '468.7')
 }
 
@@ -1027,7 +1094,14 @@ export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold'): 
   const bdef = how === 'conquer' ? implOf(bf.card.name).bfConquer : implOf(bf.card.name).bfHold
   if (bdef) {
     const pseudo: Obj = { ...(g.objs.get(g.players[p].legend) as Obj), card: bf.card, controller: p }
-    queueTrig(g, bdef, pseudo, p)
+    queueTrig(g, bdef, pseudo, p, { loc })
+  }
+  // "When you conquer" di Legend e permanenti del giocatore (383.4.c.2.b)
+  if (how === 'conquer') {
+    for (const o of [g.objs.get(g.players[p].legend)!, ...board(g).filter((x) => x.controller === p)]) {
+      const def = implOf(o.card.name).playerConquer
+      if (def) queueTrig(g, def, o, p, { loc })
+    }
   }
 }
 
@@ -1040,11 +1114,21 @@ export function baseCost(o: Obj, src: PlaySource): Cost {
   return { energy: o.card.energy ?? 0, power: Array(o.card.power ?? 0).fill(domains.length ? domains : ANY) }
 }
 
-export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ctx, 'paid' | 'extraPower'>): Cost {
+export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ctx, 'paid' | 'extraPower' | 'accel' | 'repeat'>): Cost {
   const impl = implOf(o.card.name)
   const c = baseCost(o, src)
   const out: Cost = { energy: c.energy, power: [...c.power] }
   if (ctx.paid && impl.optional?.energy) out.energy += impl.optional.energy // 356.2
+  if (ctx.accel) {
+    // 805.1.b: [1] e una Power di un dominio dell'unità
+    const doms = o.card.domains.filter((d) => (DOMAINS as string[]).includes(d))
+    out.energy += 1
+    out.power.push(doms.length ? doms : ANY)
+  }
+  if (ctx.repeat && impl.repeat) {
+    out.energy += impl.repeat.energy ?? 0 // 820.1.c.1
+    for (let i = 0; i < (impl.repeat.power ?? 0); i++) out.power.push(ANY)
+  }
   const d = impl.discount?.(g, p, o)
   if (d) {
     out.energy = Math.max(0, out.energy - (d.energy ?? 0)) // 356.6
@@ -1177,6 +1261,22 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
       ctx.paid = yes
     }
   }
+  // 805: Accelerate
+  if (impl.static?.accelerate && canPay(g, p, totalCost(g, p, o, src, { ...ctx, accel: true }))) {
+    const yes = yield* yesNo(g, p, `${o.card.name}: paghi Accelerate (1 energia e 1 Power) per farla entrare pronta?`, true, { cancel: true, rule: '805.1.b' })
+    if (yes == null) return false
+    ctx.accel = yes
+  }
+  // 820: Repeat
+  if (impl.repeat) {
+    const r = impl.repeat
+    const canDiscard = !r.discard || pl.hand.filter((u) => u !== o.uid).length >= r.discard
+    if (canDiscard && canPay(g, p, totalCost(g, p, o, src, { ...ctx, repeat: true }))) {
+      const yes = yield* yesNo(g, p, `${o.card.name}: paghi Repeat${r.discard ? ` (scarti ${r.discard})` : ''} per ripeterne l’effetto?`, true, { cancel: true, rule: '820.1.d' })
+      if (yes == null) return false
+      ctx.repeat = yes
+    }
+  }
   // 355.2: posizione delle unità
   let loc: LocId | null = null
   if (isUnit(o)) {
@@ -1211,12 +1311,13 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
   const srcLabel = src === 'trash' ? ' dal trash con Flow' : src === 'facedown' ? ' da nascosta' : src === 'champion' ? ' dalla zona campione' : ''
   const onChain = moveZone(g, o, 'chain') // 354
   if (ctx.paid && impl.optional?.discard) yield* discard(g, p, impl.optional.discard)
+  if (ctx.repeat && impl.repeat?.discard) yield* discard(g, p, impl.repeat.discard)
   pl.played++
   if (isUnit(onChain) || isGear(onChain)) {
     // 337.2 / 359.2: i permanenti si risolvono subito ed entrano sulla board
     const perm = moveZone(g, onChain, 'board', { loc })
     perm.controller = p
-    perm.exhausted = isUnit(perm) && !impl.entersReady?.(g, perm) // 143.4
+    perm.exhausted = isUnit(perm) && !ctx.accel && !impl.entersReady?.(g, perm) // 143.4, 805.6
     log(
       g,
       `${pname(g, p)} gioca ${perm.card.name}${srcLabel} ${inLoc(g, loc)}${isUnit(perm) && !perm.exhausted ? ', pronta' : ''}.`,
@@ -1226,6 +1327,10 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
     )
     applyContested(g, perm)
     if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt })
+    if (isUnit(perm) && isBf(loc)) {
+      const bdef = implOf(bfAt(g, loc).card.name).bfUnitPlayed
+      if (bdef) queueTrig(g, bdef, { ...perm, card: bfAt(g, loc).card }, p, { unit: perm })
+    }
     if (isGear(perm)) {
       for (const x of board(g).filter((x) => x.controller !== p)) {
         const t = implOf(x.card.name).opponentGear?.(g, x, perm)
@@ -1284,6 +1389,18 @@ function* standardMove(g: Game, p: PID): Gen<boolean> {
   }
   const d = yield* choose(g, p, 'Dove?', dests.map((l) => ({ label: locName(g, l, p), loc: l })), 1, 1, { cancel: true, rule: '144.4' })
   if (!d) return false
+  // Mageseeker Investigator: [A] per ogni unità oltre la prima che si muove insieme nel suo campo
+  const dest = dests[d[0]]
+  const seekers = unitsAt(g, dest).filter((x) => x.controller !== p && x.card.name === 'Mageseeker Investigator').length
+  const toll = seekers * Math.max(0, list.length - 1)
+  if (toll) {
+    const c = { energy: 0, power: Array(toll).fill(ANY) }
+    if (!canPay(g, p, c)) {
+      log(g, `Mageseeker Investigator: per muovere ${list.length} unità insieme lì servono ${toll} Power in più.`, undefined, p)
+      return false
+    }
+    pay(g, p, c)
+  }
   for (const o of list) o.exhausted = true // 144.2
   yield* moveUnits(g, list, dests[d[0]], 'movimento standard', '144')
   return true
@@ -1326,7 +1443,7 @@ export function abilitiesOf(o: Obj): AbilityDef[] {
       label: 'Equip',
       speed: 'normal',
       rule: '818.1.c.2',
-      cost: () => ({ energy: 0, power: doms.map((d) => [d]) }),
+      cost: (g, self, ctx) => impl.equipCost?.(g, self, (ctx?.data.unit as Obj | undefined) ?? null) ?? { energy: 0, power: doms.map((d) => [d]) },
       can: (g, self) => units(g).some((u) => u.controller === self.controller && u.uid !== self.attachedTo),
       prepare: function* (g, ctx) {
         const u = yield* chooseUnit(g, ctx, `A quale unità attacchi ${ctx.self.card.name}?`, (u) => u.controller === ctx.p && u.uid !== ctx.self.attachedTo, (u) => might(g, u), { cancel: true, rule: '818.1.b.1' })
@@ -1352,8 +1469,11 @@ function* activate(g: Game, p: PID, o: Obj, ab: AbilityDef): Gen<boolean> {
     const ok = yield* ab.prepare(g, ctx)
     if (!ok) return false
   }
-  const cost = withAny(ab.cost(g, o), ctx.extraPower)
-  if (!canPay(g, p, cost)) return false
+  const cost = withAny(ab.cost(g, o, ctx), ctx.extraPower)
+  if (!canPay(g, p, cost)) {
+    log(g, `Non puoi pagare il costo di ${ab.label}.`, '358.2', p)
+    return false
+  }
   pay(g, p, cost)
   if (ab.payExtra) {
     const ok = yield* ab.payExtra(g, o)
@@ -1415,6 +1535,8 @@ function* takeTurn(g: Game): Gen {
     x.played = 0
   }
   for (const o of g.objs.values()) o.moves = 0
+  g.diedThisTurn = 0
+  g.turnFlags = new Set()
   log(g, `Turno ${g.turn}: tocca a ${pl.name}.`, '304', p)
   // 315.1: Awaken
   g.phase = 'awaken'

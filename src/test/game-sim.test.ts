@@ -5,9 +5,14 @@ import { units } from '../lib/game/engine'
 import { spec } from './gameHelpers'
 
 describe('partite complete PC contro PC', () => {
-  for (let seed = 1; seed <= 40; seed++) {
-    const swap = seed % 2 === 0
-    const decks = swap ? (['Shen', 'Zed'] as const) : (['Zed', 'Shen'] as const)
+  const PAIRS = [
+    ['Zed', 'Shen'],
+    ['Vi', 'Zed'],
+    ['Shen', 'Vi'],
+  ] as const
+  for (let seed = 1; seed <= 45; seed++) {
+    const pair = PAIRS[seed % PAIRS.length]
+    const decks = seed % 2 ? pair : ([pair[1], pair[0]] as const)
     it(`${decks[0]} contro ${decks[1]}, seed ${seed}`, () => {
       const m = new Match([spec(decks[0]), spec(decks[1])], [decks[0], decks[1]], null, seed)
       let d = m.next()

@@ -14,6 +14,10 @@ export interface Ctx {
   data: Record<string, unknown>
   /** Power aggiuntiva da pagare per Deflect (809.1.c). */
   extraPower: number
+  /** Ha pagato Accelerate (805). */
+  accel?: boolean
+  /** Ha pagato Repeat (820): l'effetto si esegue due volte. */
+  repeat?: boolean
 }
 
 export interface Keywords {
@@ -28,6 +32,8 @@ export interface Keywords {
 export interface Static extends Partial<Keywords> {
   action?: boolean
   reaction?: boolean
+  /** 805: "As you play me, you may pay [1][C]. If you do, I enter ready." */
+  accelerate?: boolean
   ambush?: boolean
   hidden?: boolean
 }
@@ -50,7 +56,7 @@ export interface AbilityDef {
   id: string
   label: string
   speed: 'normal' | 'action' | 'reaction'
-  cost: (g: Game, self: Obj) => Cost
+  cost: (g: Game, self: Obj, ctx?: Ctx) => Cost
   /** Costi non standard (esaurire, disempower, scartare) e condizioni d'uso. */
   can: (g: Game, self: Obj) => boolean
   payExtra?: (g: Game, self: Obj) => Gen<boolean>
@@ -66,6 +72,8 @@ export interface CardImpl {
   /** Sconti sul costo (356.4). */
   discount?: (g: Game, p: PID, self: Obj) => { energy?: number; power?: Domain[] }
   flow?: Cost
+  /** 820: costo aggiuntivo per ripetere l'effetto. */
+  repeat?: { energy?: number; power?: number; discard?: number }
   /** Per le magie: esiste almeno una scelta valida. */
   canPlay?: (g: Game, ctx: Ctx) => boolean
   prepare?: (g: Game, ctx: Ctx) => Gen<boolean>
@@ -84,6 +92,12 @@ export interface CardImpl {
   bfHold?: TrigDef
   bfCombatStart?: (g: Game, loc: LocId) => void
   bfMight?: (g: Game, unit: Obj) => number
+  /** "When you conquer" della Legend o di altri permanenti del giocatore. */
+  playerConquer?: TrigDef
+  /** Campi: "When a player plays a unit here". ctx.data.unit è l'unità. */
+  bfUnitPlayed?: TrigDef
+  /** Costo di Equip che dipende dall'unità scelta (Hextech Gauntlets). */
+  equipCost?: (g: Game, self: Obj, unit: Obj | null) => Cost
   /** Legend di Zed: "When you banish a card you own". */
   banishOwn?: TrigDef
   /** "When an opponent plays a gear". */

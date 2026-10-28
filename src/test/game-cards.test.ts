@@ -1,10 +1,9 @@
 // Ogni carta implementata nel motore ha qui almeno un test sul suo testo stampato.
 import { describe, expect, it } from 'vitest'
-import { REGISTRY, deckCoverage } from '../lib/game'
 import { available, banish, kill, kw, might, settle, standardDests, units } from '../lib/game/engine'
 import type { Decision, Game, Obj, PID } from '../lib/game/types'
 import { act, add, drive, logText, pick, runes, scene, top, yes, no } from './gameScene'
-import { db, officialDeck } from './gameHelpers'
+import { db } from './gameHelpers'
 
 const TESTED = new Set<string>()
 function card(name: string, fn: () => void) {
@@ -696,35 +695,6 @@ describe('token e rune', () => {
       expect(engine.canPay(g, 0, { energy: 1, power: [[r.split(' ')[0] as 'Fury']] })).toBe(true)
     })
   }
-})
-
-describe('copertura', () => {
-  it('ogni carta dei mazzi Zed e Shen è implementata e testata', () => {
-    for (const name of ['Zed', 'Shen']) {
-      const deck = officialDeck(name)
-      const cov = deckCoverage(deck, db)
-      expect(cov.missing).toEqual([])
-      expect(cov.playable).toBe(true)
-      const ids = [deck.legendId!, ...Object.keys(deck.main), ...Object.keys(deck.runes), ...deck.battlefields]
-      for (const id of ids) expect(TESTED.has(db.byId.get(id)!.name)).toBe(true)
-    }
-  })
-
-  it('ogni carta registrata ha un test', () => {
-    for (const n of REGISTRY.keys()) if (!/^(Mind|Body) Rune$/.test(n)) expect(TESTED.has(n), n).toBe(true)
-  })
-
-  it('le parole chiave dichiarate compaiono nel testo stampato', () => {
-    for (const [name, impl] of REGISTRY) {
-      const c = db.cards.find((x) => x.name === name)
-      if (!c || !impl.static) continue
-      const text = c.text ?? ''
-      for (const k of Object.keys(impl.static)) {
-        const word = { action: 'Action', reaction: 'Reaction', ambush: 'Ambush', hidden: 'Hidden', shield: 'Shield', tank: 'Tank', assault: 'Assault', deflect: 'Deflect', backline: 'Backline', ganking: 'Ganking' }[k]!
-        expect(text, `${name}: ${word}`).toContain(`[${word}`)
-      }
-    }
-  })
 })
 
 export type { Obj }

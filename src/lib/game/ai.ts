@@ -91,6 +91,8 @@ function chooseAct(g: Game, d: Extract<Decision, { type: 'act' }>, mem: AiMemory
       else if (a.id.startsWith('ab-zed-legend') && g.players[p].hand.length) s = 0.5
       else if (a.id.startsWith('ab-shen-legend') && g.showdown?.combat && units(g).some((u) => u.controller === p && u.loc === g.showdown!.loc && !kw(g, u).tank)) s = 0.8
       else if (a.id.startsWith('ab-equip') && o && o.attachedTo === null) s = 1
+      // altre abilità attivate: il PC le usa nella fase principale (euristica semplice)
+      else if (d.context === 'main' && !a.id.startsWith('ab-zed-swap') && !a.id.startsWith('ab-shen-legend') && !a.id.startsWith('ab-zed-legend') && !a.id.startsWith('ab-empower')) s = 0.4
     }
     if (s > bestScore) {
       best = a

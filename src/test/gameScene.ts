@@ -40,13 +40,13 @@ export function runes(g: Game, p: PID, ...domains: Domain[]) {
 export type Script = (Answer | ((d: Decision) => Answer))[]
 
 /** Sceglie l'opzione che contiene il testo indicato. */
-export const pick = (...labels: string[]) => (d: Decision): Answer => {
+export const pick = (...labels: string[]) => Object.assign((d: Decision): Answer => {
   if (d.type === 'act') return d.actions.find((a) => labels.some((l) => a.label.includes(l)))?.id ?? 'pass'
   if (d.type !== 'choose') throw new Error('non è una scelta')
   const idx = labels.map((l) => d.options.findIndex((o) => o.label.includes(l)))
   if (idx.some((i) => i < 0)) throw new Error(`opzione mancante: ${labels} in ${d.options.map((o) => o.label)}`)
   return idx
-}
+}, { labels })
 
 export const yes = pick('Sì')
 export const no = pick('No')
@@ -61,7 +61,13 @@ export function drive<T>(gen: Gen<T>, script: Script = [], fallback?: (d: Decisi
     const d = r.value
     seen.push(d)
     let ans: Answer
-    const s = script.length ? script.shift()! : undefined
+    // una scelta preparata con pick() non viene consumata da una finestra d'azione in cui nessuno l'ha cercata
+    const head = script[0] as ((d: Decision) => Answer) & { labels?: string[] }
+    const skip =
+      typeof head === 'function' &&
+      !!head.labels &&
+      (d.type === 'assign' || (d.type === 'act' && !d.actions.some((a) => head.labels!.some((l) => a.label.includes(l)))))
+    const s = script.length && !skip ? script.shift()! : undefined
     const f = s === undefined ? fallback?.(d) : undefined
     if (s !== undefined) ans = typeof s === 'function' ? s(d) : s
     else if (f !== undefined) ans = f

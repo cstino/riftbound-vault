@@ -57,18 +57,18 @@ export const RECRUIT = tokenCard('Recruit', 1, ['Recruit'], '')
 
 const enemyOf = (ctx: Ctx) => (o: Obj) => o.controller !== ctx.p
 const mine = (ctx: Ctx) => (o: Obj) => o.controller === ctx.p
-const inCombat = (g: Game, o: Obj) => !!g.showdown?.combat && o.loc === g.showdown.loc
+export const inCombat = (g: Game, o: Obj) => !!g.showdown?.combat && o.loc === g.showdown.loc
 
 /** Il PC preferisce bersagliare unità nemiche forti con effetti dannosi e unità proprie con quelli utili. */
-const aiHarm = (ctx: Ctx, g: Game) => (o: Obj) => (o.controller !== ctx.p ? 10 + might(g, o) : -10)
-const aiHelp = (ctx: Ctx, g: Game) => (o: Obj) => (o.controller === ctx.p ? 10 + might(g, o) + (inCombat(g, o) ? 20 : 0) : -10)
+export const aiHarm = (ctx: Ctx, g: Game) => (o: Obj) => (o.controller !== ctx.p ? 10 + might(g, o) : -10)
+export const aiHelp = (ctx: Ctx, g: Game) => (o: Obj) => (o.controller === ctx.p ? 10 + might(g, o) + (inCombat(g, o) ? 20 : 0) : -10)
 
 function trashOf(g: Game, p: PID) {
   return g.players[p].trash.map((u) => g.objs.get(u)!)
 }
 
 /** Posizione per un token senza destinazione indicata: base o campo controllato (355.2.a); da nascosta, quel campo (811.1.d.5). */
-function* tokenLoc(g: Game, ctx: Ctx): Generator<import('./types').Decision, LocId, import('./types').Answer> {
+export function* tokenLoc(g: Game, ctx: Ctx): Generator<import('./types').Decision, LocId, import('./types').Answer> {
   if (ctx.hiddenAt) return ctx.hiddenAt
   const locs: LocId[] = [baseOf(ctx.p), ...g.bfs.filter((b) => b.controller === ctx.p).map((b) => b.loc)]
   if (locs.length === 1) return locs[0]
@@ -80,7 +80,7 @@ function* playShadowClone(g: Game, ctx: Ctx, loc?: LocId) {
   yield* playToken(g, ctx.p, SHADOW_CLONE, loc ?? (yield* tokenLoc(g, ctx)))
 }
 
-function giveMight(g: Game, o: Obj, n: number, source: string) {
+export function giveMight(g: Game, o: Obj, n: number, source: string) {
   if (!alive(g, o)) return
   addMod(o, { source, might: n })
   log(g, `${o.card.name} ottiene ${n > 0 ? '+' : ''}${n} Might in questo turno.`, undefined, o.controller)
@@ -511,7 +511,7 @@ register('Shen - Eye of Twilight', {
   ],
 })
 
-const exactlyOneOther = (g: Game, self: Obj) => friendlyAt(g, self.controller, self.loc).filter((o) => o !== self).length === 1
+export const exactlyOneOther = (g: Game, self: Obj) => friendlyAt(g, self.controller, self.loc).filter((o) => o !== self).length === 1
 
 register('Shen, Leader of the Kinkou Order', {
   static: { shield: 1 },
