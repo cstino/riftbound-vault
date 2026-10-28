@@ -13,6 +13,7 @@ import { LearnChapterPage } from './pages/LearnChapter'
 import { GlossaryPage } from './pages/GlossaryPage'
 import { AddCards } from './pages/AddCards'
 import { Quiz } from './pages/Quiz'
+import { Training } from './pages/Training'
 import './app.css'
 
 export default function App() {
@@ -43,6 +44,8 @@ export default function App() {
               <Route path="/aggiungi" element={<AddCards />} />
               <Route path="/impara" element={<Learn />} />
               <Route path="/impara/quiz" element={<Quiz />} />
+              <Route path="/impara/allenamento" element={<Training />} />
+              <Route path="/impara/allenamento/:id" element={<Training />} />
               <Route path="/impara/guida/:id" element={<LearnChapterPage />} />
               <Route path="/impara/parola/:id" element={<GlossaryPage />} />
               <Route path="*" element={<Home />} />

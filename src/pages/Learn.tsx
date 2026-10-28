@@ -32,6 +32,14 @@ export function Learn() {
         <span className="btn btn-primary btn-small">Inizia</span>
       </Link>
 
+      <Link to="/impara/allenamento" className="quiz-entry">
+        <span>
+          <strong>Allenamento</strong>
+          <span className="muted">Combattimenti con carte vere contro il PC: assegni tu i danni, le regole decidono l’esito.</span>
+        </span>
+        <span className="btn btn-primary btn-small">Gioca</span>
+      </Link>
+
       <section>
         <ol className="chapters">
           {LEARN.map((ch, i) => (
