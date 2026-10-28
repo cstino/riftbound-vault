@@ -69,3 +69,23 @@ describe('switch dai tornei', () => {
     expect((metaSwitches(d, db, { [inCard.id]: 1 }, meta) as { switches: unknown[] }).switches).toEqual([])
   })
 })
+
+describe('switch con carte chiuse in altri mazzi', () => {
+  it('la carta che entra è segnata con il mazzo che la contiene', () => {
+    const d = deck()
+    const legend = db.byId.get(d.legendId!)!.name
+    const inCard = db.cards.find((c) => c.type === 'Unit' && !Object.keys(d.main).some((id) => db.byId.get(id)!.name === c.name) && c.domains.every((x) => db.byId.get(d.legendId!)!.domains.includes(x)))!
+    const outCard = db.byId.get(Object.keys(d.main).find((id) => id !== d.championId)!)!
+    const cards: Record<string, { share: number; copies: number }> = {}
+    for (const id of Object.keys(d.main)) cards[db.byId.get(id)!.name] = { share: 0.9, copies: 2 }
+    cards[outCard.name] = { share: 0.1, copies: 1 }
+    cards[inCard.name] = { share: 0.8, copies: 2 }
+    const meta: MetaData = { source: '', sourceUrl: '', days: 365, generatedAt: 0, goodRule: '', legends: { [legend]: { lists: 30, good: 20, cards } } }
+    const box = { ...deck(), id: 'scatola', name: 'Scatola', addedToCollection: { [inCard.id]: 2 } }
+    const r = metaSwitches(d, db, { [inCard.id]: 2 }, meta, [box])
+    expect(r.status === 'ok' && r.switches[0].inBox).toEqual([{ deck: 'Scatola', q: 2 }])
+    // liberata la scatola, la carta è libera
+    const r2 = metaSwitches(d, db, { [inCard.id]: 2 }, meta, [{ ...box, released: true }])
+    expect(r2.status === 'ok' && r2.switches[0].inBox).toBeUndefined()
+  })
+})

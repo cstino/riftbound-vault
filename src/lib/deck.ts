@@ -343,6 +343,45 @@ export function replaceOptions(deck: Deck, db: CardDb, owned: Record<string, num
 }
 
 // ---------------------------------------------------------------------------
+// Carte chiuse nei mazzi posseduti
+
+/**
+ * Copie chiuse nei mazzi posseduti e non liberati, per id di stampa. `except`: il mazzo che si sta
+ * guardando, le cui carte sono a sua disposizione.
+ */
+export function lockedCopies(decks: Deck[], except?: string) {
+  const out: Record<string, number> = {}
+  for (const d of decks) {
+    if (!d.addedToCollection || d.released || d.id === except) continue
+    for (const [id, q] of Object.entries(d.addedToCollection)) out[id] = (out[id] ?? 0) + q
+  }
+  return out
+}
+
+/** Copie utilizzabili: quelle sfuse, più quelle del mazzo `forDeck` stesso. */
+export function availableCopies(owned: Record<string, number>, decks: Deck[], forDeck?: string) {
+  const locked = lockedCopies(decks, forDeck)
+  const out: Record<string, number> = {}
+  for (const [id, q] of Object.entries(owned)) {
+    const left = q - (locked[id] ?? 0)
+    if (left > 0) out[id] = left
+  }
+  return out
+}
+
+
+/** In quali mazzi posseduti (non liberati, diversi da `except`) sono chiuse le copie di una carta. */
+export function boxesOf(db: CardDb, decks: Deck[], name: string, except?: string) {
+  const out: { deck: string; q: number }[] = []
+  for (const d of decks) {
+    if (!d.addedToCollection || d.released || d.id === except) continue
+    const q = Object.entries(d.addedToCollection).reduce((a, [id, n]) => a + (db.byId.get(id)?.name === name ? n : 0), 0)
+    if (q > 0) out.push({ deck: d.name, q })
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
 // Switch dai tornei (public/data/meta.json, da scripts/update_meta.py con i dati di TopDeck.gg)
 
 export interface MetaData {
@@ -367,6 +406,8 @@ export interface MetaSwitch {
   shareIn: number
   shareOut: number
   copiesIn: number
+  /** Se le copie libere non bastano: i mazzi posseduti nella cui scatola è chiusa la carta che entra. */
+  inBox?: { deck: string; q: number }[]
 }
 
 export type MetaResult =
@@ -378,7 +419,7 @@ export type MetaResult =
  * piazzate della stessa Legend. Non è una regola né una garanzia: dice solo cosa usano i giocatori
  * che vincono più di quanto perdono.
  */
-export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, number>, meta: MetaData, limit = 6): MetaResult {
+export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, number>, meta: MetaData, decks: Deck[] = [], limit = 6): MetaResult {
   const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
   const m = legend ? meta.legends[legend.name] : undefined
   if (!legend || !m || m.good === 0) return { status: 'none' }
@@ -386,6 +427,8 @@ export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, numbe
   const share = (c: Card) => m.cards[c.name]?.share ?? 0
   const inDeck = namesIn(deck, db)
   const have = ownedNames(db, owned)
+  // copie libere: sfuse o del mazzo stesso; le altre sono chiuse nelle scatole di altri mazzi posseduti
+  const free = ownedNames(db, availableCopies(owned, decks, deck.id))
 
   const ins = new Map<string, Card>()
   for (const id of Object.keys(owned)) {
@@ -403,9 +446,12 @@ export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, numbe
   }
   const pairs: MetaSwitch[] = []
   for (const o of outs.values())
-    for (const i of ins.values()) pairs.push({ out: o, in: i, shareIn: share(i), shareOut: share(o), copiesIn: m.cards[i.name].copies })
-  // Prima le carte più giocate che entrano al posto delle meno giocate; ogni carta una volta sola
-  pairs.sort((a, b) => b.shareIn - b.shareOut - (a.shareIn - a.shareOut) || (a.out.energy ?? 0) - (b.out.energy ?? 0))
+    for (const i of ins.values()) {
+      const boxed = (free.get(i.name) ?? 0) - (inDeck.get(i.name) ?? 0) <= 0
+      pairs.push({ out: o, in: i, shareIn: share(i), shareOut: share(o), copiesIn: m.cards[i.name].copies, inBox: boxed ? boxesOf(db, decks, i.name, deck.id) : undefined })
+    }
+  // Prima le carte più giocate che entrano al posto delle meno giocate (a parità, quelle libere); ogni carta una volta sola
+  pairs.sort((a, b) => b.shareIn - b.shareOut - (a.shareIn - a.shareOut) || Number(!!a.inBox) - Number(!!b.inBox) || (a.out.energy ?? 0) - (b.out.energy ?? 0))
   const usedOut = new Set<string>()
   const usedIn = new Set<string>()
   const switches: MetaSwitch[] = []
