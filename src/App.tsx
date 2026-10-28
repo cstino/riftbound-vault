@@ -10,6 +10,7 @@ import { DeckBuilder } from './pages/DeckBuilder'
 import { Learn } from './pages/Learn'
 import { LearnChapterPage } from './pages/LearnChapter'
 import { GlossaryPage } from './pages/GlossaryPage'
+import { AddCards } from './pages/AddCards'
 import './app.css'
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/collezione" element={<Collection />} />
               <Route path="/mazzi" element={<Decks />} />
               <Route path="/mazzi/:id" element={<DeckBuilder />} />
+              <Route path="/aggiungi" element={<AddCards />} />
               <Route path="/impara" element={<Learn />} />
               <Route path="/impara/guida/:id" element={<LearnChapterPage />} />
               <Route path="/impara/parola/:id" element={<GlossaryPage />} />

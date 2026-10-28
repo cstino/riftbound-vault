@@ -66,10 +66,15 @@ export function Home() {
       </form>
 
       <header className="home-head">
-        <h1>La tua collezione</h1>
-        <p className="muted">
-          {copies} copie, {ownedCards.length} carte diverse
-        </p>
+        <div>
+          <h1>La tua collezione</h1>
+          <p className="muted">
+            {copies} copie, {ownedCards.length} carte diverse
+          </p>
+        </div>
+        <Link to="/aggiungi" className="btn btn-primary btn-small">
+          + Aggiungi
+        </Link>
       </header>
 
       <Coverflow cards={best} caption={(c) => `${c.rarity} · ${c.set_name} ${c.number}/${c.set_size}`} />

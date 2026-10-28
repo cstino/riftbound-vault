@@ -23,6 +23,8 @@ interface VaultState {
   deleteDeck: (id: string) => void
   /** Aggiunge alla collezione (o toglie) tutte le carte di un mazzo che possiedi fisicamente. */
   setDeckOwned: (deck: Deck, owned: boolean) => void
+  /** Aggiunge (o toglie, con quantità negative) più carte in una volta. */
+  addMany: (cards: Record<string, number>) => void
   importData: (data: { owned: Record<string, number>; decks: Deck[] }) => void
   seed: (owned: Record<string, number>, decks: Deck[]) => void
 }
@@ -82,6 +84,16 @@ export const useVault = create<VaultState>()(
           }
           const decks = s.decks.map((d) => (d.id === deck.id ? { ...d, addedToCollection: added } : d))
           return { owned, decks }
+        }),
+      addMany: (cards) =>
+        setState((s) => {
+          const owned = { ...s.owned }
+          for (const [id, q] of Object.entries(cards)) {
+            const next = (owned[id] ?? 0) + q
+            if (next > 0) owned[id] = next
+            else delete owned[id]
+          }
+          return { owned }
         }),
       importData: (data) => setState({ owned: data.owned, decks: data.decks, seeded: true }),
       seed: (owned, decks) => setState({ owned, decks, seeded: true }),

@@ -126,7 +126,8 @@ button {
   cursor: pointer;
 }
 
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
 }

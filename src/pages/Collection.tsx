@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useDb } from '../lib/useDb'
 import { useVault } from '../lib/store'
@@ -87,6 +87,9 @@ export function Collection() {
             {results.length} carte{all ? '' : `, ${copies} copie`}
           </p>
         </div>
+        <Link to="/aggiungi" className="btn btn-primary btn-small">
+          + Aggiungi
+        </Link>
         <div className="seg" role="tablist" aria-label="Quali carte mostrare">
           {[
             { v: false, label: 'Mie' },
