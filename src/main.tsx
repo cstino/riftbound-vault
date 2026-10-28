@@ -5,6 +5,7 @@ import { MotionConfig } from 'motion/react'
 import './styles/global.css'
 import App from './App'
 import { DbProvider } from './lib/useDb'
+import { AuthGate } from './lib/auth'
 import { Splash } from './components/Splash'
 
 // Safari su iPhone ignora user-scalable=no: blocca qui il pinch-zoom (gesture* esistono solo su Safari)
@@ -16,9 +17,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MotionConfig reducedMotion="user">
       <HashRouter>
-        <DbProvider fallback={<Splash />}>
-          <App />
-        </DbProvider>
+        <AuthGate fallback={<Splash />}>
+          {(userId) => (
+            <DbProvider key={userId} userId={userId} fallback={<Splash />}>
+              <App />
+            </DbProvider>
+          )}
+        </AuthGate>
       </HashRouter>
     </MotionConfig>
   </StrictMode>,

@@ -169,3 +169,28 @@
   color: var(--text-2);
   font-size: 13.5px;
 }
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.03);
+}
+
+.account-email {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.account-sync-saving {
+  color: var(--cyan);
+}
+
+.account-sync-offline,
+.account-sync-error {
+  color: #ffb36b;
+}

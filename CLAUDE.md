@@ -22,6 +22,11 @@
 - `scripts/update_meta.py` aggiorna `public/data/meta.json` dall'API di TopDeck.gg (serve `TOPDECK_API_KEY`, mai nel repository). Salva solo statistiche aggregate per Legend, niente nomi di giocatori; l'app deve mostrare "Data provided by TopDeck.gg" (condizioni d'uso). Niente scraping di altri siti.
 - I dati di Radiance nella galleria hanno tipi e domini sbagliati: vedi `fix_radiance_domains` e la correzione del tipo in `build()`.
 
+## Account
+- Login con Supabase (`src/lib/supabase.ts`, `src/lib/auth.tsx`): nessuna pagina si apre senza account e non esiste registrazione; gli utenti li crea l'amministratore dal pannello Supabase (Authentication → Users), con le registrazioni disattivate.
+- Collezione e mazzi di ogni utente stanno nella tabella `vault` (`supabase/schema.sql`, protetta da Row Level Security); il browser ne tiene una copia per account in IndexedDB (`src/lib/sync.ts`). La versione online vince al caricamento; poi ogni modifica viene salvata online.
+- Variabili `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (vedi `.env.example`), in Vercel e in `.env.local`. Mai la chiave `service_role` nell'app o nel repository.
+
 ## UI
 - Testi dell’interfaccia in italiano; i termini di gioco restano in inglese come sono stampati sulle carte.
 - Stile: viola profondo + magenta neon, colori ufficiali dei domini in `src/styles/global.css`. Font: Chakra Petch (titoli), Manrope (testo).

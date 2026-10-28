@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useDb } from '../lib/useDb'
@@ -10,6 +10,9 @@ import { LEARN } from '../data/learn'
 import { Coverflow } from '../components/Coverflow'
 import { keywordIdsIn } from '../components/CardText'
 import { useSheet } from '../components/sheetStore'
+import { useAuth } from '../lib/auth'
+import { onSyncStatus, syncStatus, type SyncStatus } from '../lib/sync'
+import { askConfirm } from '../components/ConfirmDialog'
 import './home.css'
 
 export function Home() {
@@ -156,6 +159,47 @@ export function Home() {
           ))}
         </ol>
       </section>
+
+      <AccountBar />
     </div>
+  )
+}
+
+const SYNC_LABEL: Record<SyncStatus, string> = {
+  idle: 'Dati salvati online',
+  saving: 'Salvataggio…',
+  saved: 'Dati salvati online',
+  offline: 'Offline: salverò appena torna la rete',
+  error: 'Salvataggio non riuscito: riprovo alla prossima modifica',
+}
+
+/** Account collegato, stato del salvataggio online e uscita. */
+function AccountBar() {
+  const { email, signOut } = useAuth()
+  const [sync, setSync] = useState(syncStatus)
+  useEffect(() => onSyncStatus(setSync), [])
+  return (
+    <section className="section account-bar">
+      <div>
+        <p className="tiny muted">Account</p>
+        <p className="account-email">{email}</p>
+        <p className={`tiny account-sync account-sync-${sync}`}>{SYNC_LABEL[sync]}</p>
+      </div>
+      <button
+        type="button"
+        className="btn btn-small"
+        onClick={async () => {
+          const ok = await askConfirm({
+            title: 'Uscire?',
+            message: sync === 'offline' || sync === 'error' ? 'Alcune modifiche non sono ancora salvate online e andrebbero perse.' : 'Collezione e mazzi restano salvati online: li ritrovi al prossimo accesso.',
+            confirmLabel: 'Esci',
+            danger: sync === 'offline' || sync === 'error',
+          })
+          if (ok) await signOut()
+        }}
+      >
+        Esci
+      </button>
+    </section>
   )
 }
