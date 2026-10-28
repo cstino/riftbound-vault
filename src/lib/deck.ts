@@ -343,6 +343,85 @@ export function replaceOptions(deck: Deck, db: CardDb, owned: Record<string, num
 }
 
 // ---------------------------------------------------------------------------
+// Switch dai tornei (public/data/meta.json, da scripts/update_meta.py con i dati di TopDeck.gg)
+
+export interface MetaData {
+  source: string
+  sourceUrl: string
+  days: number
+  generatedAt: number
+  goodRule: string
+  legends: Record<string, { lists: number; good: number; cards: Record<string, { share: number; copies: number }> }>
+}
+
+/** Sotto queste liste ben piazzate le percentuali sono troppo instabili per suggerire qualcosa. */
+export const META_MIN_GOOD = 10
+/** Entra una carta presente in almeno metà delle liste ben piazzate... */
+export const META_IN = 0.5
+/** ...al posto di una che compare in al massimo una su cinque. */
+export const META_OUT = 0.2
+
+export interface MetaSwitch {
+  out: Card
+  in: Card
+  shareIn: number
+  shareOut: number
+  copiesIn: number
+}
+
+export type MetaResult =
+  | { status: 'none' }
+  | { status: 'few'; lists: number; good: number }
+  | { status: 'ok'; lists: number; good: number; switches: MetaSwitch[] }
+
+/**
+ * Switch tra carte possedute e carte del mazzo, basati su cosa giocano le liste di torneo ben
+ * piazzate della stessa Legend. Non è una regola né una garanzia: dice solo cosa usano i giocatori
+ * che vincono più di quanto perdono.
+ */
+export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, number>, meta: MetaData, limit = 6): MetaResult {
+  const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
+  const m = legend ? meta.legends[legend.name] : undefined
+  if (!legend || !m) return { status: 'none' }
+  if (m.good < META_MIN_GOOD) return { status: 'few', lists: m.lists, good: m.good }
+  const tag = legendChampionTag(legend, db)
+  const share = (c: Card) => m.cards[c.name]?.share ?? 0
+  const inDeck = namesIn(deck, db)
+  const have = ownedNames(db, owned)
+
+  const ins = new Map<string, Card>()
+  for (const id of Object.keys(owned)) {
+    const c = db.byId.get(id)
+    if (!c || (owned[id] ?? 0) <= 0 || !legalMain(c, legend.domains, tag) || share(c) < META_IN) continue
+    if ((have.get(c.name) ?? 0) - (inDeck.get(c.name) ?? 0) <= 0) continue
+    if ((inDeck.get(c.name) ?? 0) >= (isUnique(c) ? 1 : MAX_COPIES)) continue
+    if (!ins.has(c.name)) ins.set(c.name, c)
+  }
+  const outs = new Map<string, Card>()
+  for (const [id, q] of Object.entries(deck.main)) {
+    const c = db.byId.get(id)
+    if (!c || (id === deck.championId && q <= 1) || share(c) > META_OUT) continue
+    if (!outs.has(c.name)) outs.set(c.name, c)
+  }
+  const pairs: MetaSwitch[] = []
+  for (const o of outs.values())
+    for (const i of ins.values()) pairs.push({ out: o, in: i, shareIn: share(i), shareOut: share(o), copiesIn: m.cards[i.name].copies })
+  // Prima le carte più giocate che entrano al posto delle meno giocate; ogni carta una volta sola
+  pairs.sort((a, b) => b.shareIn - b.shareOut - (a.shareIn - a.shareOut) || (a.out.energy ?? 0) - (b.out.energy ?? 0))
+  const usedOut = new Set<string>()
+  const usedIn = new Set<string>()
+  const switches: MetaSwitch[] = []
+  for (const p of pairs) {
+    if (usedOut.has(p.out.name) || usedIn.has(p.in.name)) continue
+    usedOut.add(p.out.name)
+    usedIn.add(p.in.name)
+    switches.push(p)
+    if (switches.length >= limit) break
+  }
+  return { status: 'ok', lists: m.lists, good: m.good, switches }
+}
+
+// ---------------------------------------------------------------------------
 // Mazzi importati dal file Excel iniziale (public/data/decks.json)
 
 interface PresetDeck {

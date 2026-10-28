@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDb } from '../lib/useDb'
@@ -27,6 +27,12 @@ import {
   MAX_COPIES,
   presetToDeck,
   replaceOptions,
+  metaSwitches,
+  META_IN,
+  META_MIN_GOOD,
+  META_OUT,
+  type MetaData,
+  type MetaSwitch,
   suggestCards,
   validateDeck,
 } from '../lib/deck'
@@ -141,7 +147,7 @@ export function DeckBuilder() {
               transition={{ duration: 0.2 }}
             >
               {tab === 'mazzo' && <DeckTab deck={deck} edit={edit} requestAdd={requestAdd} />}
-              {tab === 'modifica' && <AddTab deck={deck} requestAdd={requestAdd} />}
+              {tab === 'modifica' && <AddTab deck={deck} edit={edit} requestAdd={requestAdd} />}
               {tab === 'regole' && <RulesTab deck={deck} />}
             </motion.div>
           </AnimatePresence>
@@ -630,7 +636,7 @@ function BattlefieldPicker({ options, owned, onPick }: { options: Card[]; owned:
 
 // ---------------------------------------------------------------------------
 
-function AddTab({ deck, requestAdd }: { deck: Deck; requestAdd: (c: Card) => void }) {
+function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) => void) => void; requestAdd: (c: Card) => void }) {
   const db = useDb()
   const owned = useVault((s) => s.owned)
   const names = useOwnedNames()
@@ -690,6 +696,15 @@ function AddTab({ deck, requestAdd }: { deck: Deck; requestAdd: (c: Card) => voi
         </ul>
       ) : (
         <>
+          <MetaSwitchList
+            deck={deck}
+            onSwap={(sw) =>
+              edit((d) => {
+                removeCopy(d, sw.out.id)
+                addCopy(d, sw.in, db)
+              })
+            }
+          />
           <section className="section">
             <div className="section-head">
               <h2>Suggerite per questo mazzo</h2>
@@ -722,6 +737,104 @@ function AddTab({ deck, requestAdd }: { deck: Deck; requestAdd: (c: Card) => voi
         </>
       )}
     </div>
+  )
+}
+
+let metaPromise: Promise<MetaData | null> | null = null
+
+/** Statistiche dei tornei (public/data/meta.json); null se il file non c'è. */
+function useMeta() {
+  const [meta, setMeta] = useState<MetaData | null | undefined>(undefined)
+  useEffect(() => {
+    metaPromise ??= fetch(asset('data/meta.json'))
+      .then((r) => (r.ok ? (r.json() as Promise<MetaData>) : null))
+      .catch(() => null)
+    let alive = true
+    metaPromise.then((m) => alive && setMeta(m))
+    return () => {
+      alive = false
+    }
+  }, [])
+  return meta
+}
+
+const pct = (x: number) => `${Math.round(x * 100)}%`
+
+/** Switch suggeriti dai risultati dei tornei: carte possedute molto giocate al posto di carte poco giocate. */
+function MetaSwitchList({ deck, onSwap }: { deck: Deck; onSwap: (s: MetaSwitch) => void }) {
+  const db = useDb()
+  const owned = useVault((s) => s.owned)
+  const meta = useMeta()
+  const location = useLocation()
+  const res = useMemo(() => (meta ? metaSwitches(deck, db, owned, meta) : null), [meta, deck, db, owned])
+  if (meta === undefined) return null
+  const legend = db.byId.get(deck.legendId!)!
+  const who = legend.name.split(' - ')[0]
+  const date = meta ? new Date(meta.generatedAt * 1000).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+  return (
+    <section className="section">
+      <div className="section-head">
+        <h2>Switch dai tornei</h2>
+        {res?.status === 'ok' && <span className="tiny">{res.switches.length}</span>}
+      </div>
+      <p className="muted picker-help">
+        Cosa giocano nei tornei i giocatori con {legend.name} che hanno chiuso con più vittorie che sconfitte. È un dato reale, non una garanzia che il mazzo migliori.
+      </p>
+      {!meta || res?.status === 'none' ? (
+        <p className="switch-none">Nessun dato di torneo per questa Legend.</p>
+      ) : res?.status === 'few' ? (
+        <p className="switch-none">
+          Solo {res.good} liste ben piazzate di {who} (su {res.lists}) nell’ultimo anno: troppo poche per suggerire switch. Ne servono almeno {META_MIN_GOOD}.
+        </p>
+      ) : res?.status === 'ok' && res.switches.length === 0 ? (
+        <p className="switch-none">
+          Nessuno switch: tra le carte che possiedi nessuna compare in almeno il {pct(META_IN)} delle {res.good} liste ben piazzate di {who} al posto di una carta del tuo mazzo che compare al massimo nel {pct(META_OUT)}.
+        </p>
+      ) : res?.status === 'ok' ? (
+        <motion.ul layout className="switches">
+          <AnimatePresence initial={false}>
+            {res.switches.map((s) => (
+              <motion.li key={`${s.out.id}>${s.in.id}`} layout className="switch" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 20 }}>
+                <div className="switch-cards">
+                  <Link to={`/carta/${s.out.id}`} state={{ background: location }} className="switch-card switch-out">
+                    <img src={cardImage(s.out)} alt="" loading="lazy" />
+                    <span>
+                      <em>Esce</em>
+                      {s.out.name}
+                    </span>
+                  </Link>
+                  <span className="switch-arrow" aria-hidden>
+                    →
+                  </span>
+                  <Link to={`/carta/${s.in.id}`} state={{ background: location }} className="switch-card switch-in">
+                    <img src={cardImage(s.in)} alt="" loading="lazy" />
+                    <span>
+                      <em>Entra</em>
+                      {s.in.name}
+                    </span>
+                  </Link>
+                </div>
+                <p className="switch-data">
+                  <strong>{s.in.name}</strong> è in {pct(s.shareIn)} delle {res.good} liste ben piazzate (in media {s.copiesIn.toLocaleString('it-IT')} copie); <strong>{s.out.name}</strong> in {pct(s.shareOut)}.
+                </p>
+                <motion.button type="button" className="btn btn-primary btn-small" onClick={() => onSwap(s)} whileTap={{ scale: 0.95 }}>
+                  Scambia
+                </motion.button>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </motion.ul>
+      ) : null}
+      {meta && (
+        <p className="tiny meta-credit">
+          Data provided by{' '}
+          <a href={meta.sourceUrl} target="_blank" rel="noreferrer">
+            TopDeck.gg
+          </a>{' '}
+          · tornei Constructed dell’ultimo anno, aggiornati al {date}
+        </p>
+      )}
+    </section>
   )
 }
 
