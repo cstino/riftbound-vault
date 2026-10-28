@@ -290,6 +290,19 @@ const GROUPS: { label: string; test: (c: Card) => boolean }[] = [
   { label: 'Gear', test: (c) => /Gear/.test(c.type) },
 ]
 
+function CoreCard({ card, label, note, owned }: { card: Card; label: string; note: string; owned: number }) {
+  const location = useLocation()
+  return (
+    <Link to={`/carta/${card.id}`} state={{ background: location }} className="core-card">
+      <img src={asset(card.image_file)} alt={card.name} loading="lazy" />
+      <span className="core-card-label">{label}</span>
+      <span className="core-card-name">{card.name}</span>
+      <span className="tiny">{note}</span>
+      <span className={`core-card-owned ${owned ? 'ok' : 'todo'}`}>{owned ? 'Ce l’hai' : 'Non la possiedi'}</span>
+    </Link>
+  )
+}
+
 function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => void }) {
   const db = useDb()
   const names = useOwnedNames()
@@ -307,8 +320,22 @@ function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => 
       else d.main[id] = Math.max(id === d.championId ? 1 : 0, q)
     })
 
+  const champion = deck.championId ? db.byId.get(deck.championId) : undefined
+
   return (
     <div className="deck-tab">
+      <section className="section">
+        <div className="section-head">
+          <h2>Legend e campione</h2>
+        </div>
+        <div className="core-cards">
+          <CoreCard card={legend} label="Champion Legend" note="Resta nella Legend Zone, non fa parte del mazzo (103.2.a)" owned={names.get(legend.name) ?? 0} />
+          {champion && (
+            <CoreCard card={champion} label="Campione scelto" note="Inizia nella Champion Zone e conta nelle 40 carte (103.3.a)" owned={names.get(champion.name) ?? 0} />
+          )}
+        </div>
+      </section>
+
       {GROUPS.map((g) => {
         const rows = entries.filter(([c]) => g.test(c))
         if (!rows.length) return null

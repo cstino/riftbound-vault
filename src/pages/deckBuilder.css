@@ -324,3 +324,45 @@
   margin: 40px auto 0;
   color: var(--danger);
 }
+
+.core-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.core-card {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.core-card img {
+  width: 100%;
+  border-radius: 4.6% / 3.3%;
+  box-shadow: 0 16px 34px -16px #000, 0 0 0 1px rgb(255 62 165 / 0.35), 0 0 40px -14px rgb(255 62 165 / 0.6);
+  margin-bottom: 6px;
+  transition: transform 220ms var(--ease-out);
+}
+
+.core-card:hover img {
+  transform: translateY(-3px);
+}
+
+.core-card-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--magenta);
+}
+
+.core-card-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.core-card-owned {
+  font-size: 12.5px;
+  font-weight: 700;
+}
