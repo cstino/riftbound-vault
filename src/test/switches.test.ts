@@ -48,12 +48,16 @@ describe('switch dai tornei', () => {
     expect(r.switches[0].shareIn).toBe(0.8)
   })
 
-  it('niente se la carta non è posseduta o se le liste sono poche', () => {
+  it('niente se la carta non è posseduta; con poche liste switch segnati come deboli', () => {
     const { d, meta, legend, inCard } = base()
     const r = metaSwitches(d, db, {}, meta)
     expect(r.status === 'ok' && r.switches.length).toBe(0)
+    // sotto le 10 liste gli switch ci sono lo stesso, segnati come deboli; senza liste niente
     meta.legends[legend].good = META_MIN_GOOD - 1
-    expect(metaSwitches(d, db, { [inCard.id]: 1 }, meta).status).toBe('few')
+    const weak = metaSwitches(d, db, { [inCard.id]: 1 }, meta)
+    expect(weak.status === 'ok' && weak.weak && weak.switches.length).toBe(1)
+    meta.legends[legend].good = 0
+    expect(metaSwitches(d, db, { [inCard.id]: 1 }, meta).status).toBe('none')
   })
 
   it('sotto le soglie non propone niente', () => {

@@ -8,7 +8,7 @@
 - Il PC (`src/lib/game/ai.ts`) sceglie solo tra le azioni che il motore dichiara legali: la strategia è un'euristica e può giocare male, ma non può barare.
 - Gli esempi usano carte reali di `public/data/cards.json`; il test controlla che contengano la parola chiave spiegata.
 - I suggerimenti del deck builder sono euristiche: devono sempre mostrare il motivo e non presentarsi come regole.
-- Gli switch del deck builder vengono solo dai tornei (`public/data/meta.json`): carte possedute presenti in almeno metà delle liste ben piazzate della stessa Legend al posto di carte presenti al massimo in una su cinque, con almeno 10 liste. Niente switch basati sui temi: non dicono se il mazzo migliora.
+- Gli switch del deck builder vengono solo dai tornei (`public/data/meta.json`): carte possedute presenti in almeno metà delle liste ben piazzate della stessa Legend al posto di carte presenti al massimo in una su cinque. Sotto le 10 liste ben piazzate si mostrano lo stesso (scelta dell'utente) ma con l'avviso che i dati sono pochi. Niente switch basati sui temi: non dicono se il mazzo migliora.
 - Quando esce un nuovo Core Rules: aggiornare `rules/`, rilanciare `scripts/extract_rules.py`, ricontrollare le voci del glossario toccate e `npx vitest run`.
 
 ## Flusso di lavoro

@@ -29,7 +29,6 @@ import {
   replaceOptions,
   metaSwitches,
   META_IN,
-  META_MIN_GOOD,
   META_OUT,
   type MetaData,
   type MetaSwitch,
@@ -780,12 +779,13 @@ function MetaSwitchList({ deck, onSwap }: { deck: Deck; onSwap: (s: MetaSwitch) 
       <p className="muted picker-help">
         Cosa giocano nei tornei i giocatori con {legend.name} che hanno chiuso con più vittorie che sconfitte. È un dato reale, non una garanzia che il mazzo migliori.
       </p>
-      {!meta || res?.status === 'none' ? (
-        <p className="switch-none">Nessun dato di torneo per questa Legend.</p>
-      ) : res?.status === 'few' ? (
-        <p className="switch-none">
-          Solo {res.good} liste ben piazzate di {who} (su {res.lists}) nell’ultimo anno: troppo poche per suggerire switch. Ne servono almeno {META_MIN_GOOD}.
+      {res?.status === 'ok' && res.weak && (
+        <p className="switch-weak">
+          Attenzione: solo {res.good} {res.good === 1 ? 'lista ben piazzata' : 'liste ben piazzate'} di {who} nell’ultimo anno. Con così pochi dati una singola lista sposta le percentuali di {pct(1 / res.good)}: prendili come spunti, non come conferme.
         </p>
+      )}
+      {!meta || res?.status === 'none' ? (
+        <p className="switch-none">Nessuna lista di torneo ben piazzata per questa Legend.</p>
       ) : res?.status === 'ok' && res.switches.length === 0 ? (
         <p className="switch-none">
           Nessuno switch: tra le carte che possiedi nessuna compare in almeno il {pct(META_IN)} delle {res.good} liste ben piazzate di {who} al posto di una carta del tuo mazzo che compare al massimo nel {pct(META_OUT)}.

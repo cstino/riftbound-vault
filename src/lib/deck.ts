@@ -354,7 +354,7 @@ export interface MetaData {
   legends: Record<string, { lists: number; good: number; cards: Record<string, { share: number; copies: number }> }>
 }
 
-/** Sotto queste liste ben piazzate le percentuali sono troppo instabili per suggerire qualcosa. */
+/** Sotto queste liste ben piazzate gli switch si mostrano lo stesso, ma con l'avviso che le percentuali sono instabili. */
 export const META_MIN_GOOD = 10
 /** Entra una carta presente in almeno metà delle liste ben piazzate... */
 export const META_IN = 0.5
@@ -371,8 +371,7 @@ export interface MetaSwitch {
 
 export type MetaResult =
   | { status: 'none' }
-  | { status: 'few'; lists: number; good: number }
-  | { status: 'ok'; lists: number; good: number; switches: MetaSwitch[] }
+  | { status: 'ok'; lists: number; good: number; weak: boolean; switches: MetaSwitch[] }
 
 /**
  * Switch tra carte possedute e carte del mazzo, basati su cosa giocano le liste di torneo ben
@@ -382,8 +381,7 @@ export type MetaResult =
 export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, number>, meta: MetaData, limit = 6): MetaResult {
   const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
   const m = legend ? meta.legends[legend.name] : undefined
-  if (!legend || !m) return { status: 'none' }
-  if (m.good < META_MIN_GOOD) return { status: 'few', lists: m.lists, good: m.good }
+  if (!legend || !m || m.good === 0) return { status: 'none' }
   const tag = legendChampionTag(legend, db)
   const share = (c: Card) => m.cards[c.name]?.share ?? 0
   const inDeck = namesIn(deck, db)
@@ -418,7 +416,7 @@ export function metaSwitches(deck: Deck, db: CardDb, owned: Record<string, numbe
     switches.push(p)
     if (switches.length >= limit) break
   }
-  return { status: 'ok', lists: m.lists, good: m.good, switches }
+  return { status: 'ok', lists: m.lists, good: m.good, weak: m.good < META_MIN_GOOD, switches }
 }
 
 // ---------------------------------------------------------------------------
