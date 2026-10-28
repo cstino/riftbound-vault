@@ -26,7 +26,10 @@ import {
   isUnique,
   MAX_COPIES,
   presetToDeck,
+  removalOrder,
   suggestCards,
+  suggestSwitches,
+  type Switch,
   validateDeck,
 } from '../lib/deck'
 import { DomainIcon, EnergyGlyph, MightGlyph } from '../components/Icons'
@@ -36,7 +39,7 @@ import { cardParagraphs } from '../components/CardText'
 import { ownedByName, ownedCoverage } from './deckUtils'
 import './deckBuilder.css'
 
-type Tab = 'mazzo' | 'aggiungi' | 'regole'
+type Tab = 'mazzo' | 'modifica' | 'regole'
 
 /** Una stampa per nome: la base se esiste. */
 function uniqueByName(cards: Card[]) {
@@ -55,13 +58,14 @@ export function DeckBuilder() {
   const deleteDeck = useVault((s) => s.deleteDeck)
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('mazzo')
+  const [replacing, setReplacing] = useState<Card | null>(null)
 
   if (!deck) {
     return (
       <div className="empty">
         <p>Questo mazzo non esiste più.</p>
         <Link className="btn btn-small" to="/mazzi" style={{ marginTop: 12 }}>
-          Torna ai mazzi
+          Torna ai deck
         </Link>
       </div>
     )
@@ -74,13 +78,18 @@ export function DeckBuilder() {
   }
   const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
   const champion = deck.championId ? db.byId.get(deck.championId) : undefined
+  /** Aggiunge una copia; con il mazzo principale già a 40 chiede prima cosa togliere. */
+  const requestAdd = (c: Card) => {
+    if (!isBattlefield(c) && countOf(deck.main) >= MAIN_MIN) setReplacing(c)
+    else edit((d) => addCopy(d, c, db))
+  }
 
   return (
     <div className="builder">
       {deck.preset && <OwnedDeckBox deck={deck} />}
       <header className="builder-head">
         <Link to="/mazzi" className="link-more">
-          ← Mazzi
+          ← Deck
         </Link>
         <input
           className="builder-name"
@@ -115,7 +124,7 @@ export function DeckBuilder() {
             {(
               [
                 ['mazzo', 'Mazzo'],
-                ['aggiungi', 'Aggiungi'],
+                ['modifica', 'Modifica'],
                 ['regole', 'Regole'],
               ] as const
             ).map(([k, label]) => (
@@ -133,12 +142,30 @@ export function DeckBuilder() {
               exit={{ opacity: 0, x: -12 }}
               transition={{ duration: 0.2 }}
             >
-              {tab === 'mazzo' && <DeckTab deck={deck} edit={edit} />}
-              {tab === 'aggiungi' && <AddTab deck={deck} edit={edit} />}
+              {tab === 'mazzo' && <DeckTab deck={deck} edit={edit} requestAdd={requestAdd} />}
+              {tab === 'modifica' && <AddTab deck={deck} edit={edit} requestAdd={requestAdd} />}
               {tab === 'regole' && <RulesTab deck={deck} />}
             </motion.div>
           </AnimatePresence>
           <StatusBar deck={deck} onIssues={() => setTab('regole')} />
+          <ReplaceSheet
+            deck={deck}
+            card={replacing}
+            onClose={() => setReplacing(null)}
+            onPick={(outId) => {
+              const c = replacing!
+              edit((d) => {
+                removeCopy(d, outId)
+                addCopy(d, c, db)
+              })
+              setReplacing(null)
+            }}
+            onAddAnyway={() => {
+              const c = replacing!
+              edit((d) => addCopy(d, c, db))
+              setReplacing(null)
+            }}
+          />
         </>
       )}
 
@@ -216,7 +243,7 @@ function OwnedDeckBox({ deck }: { deck: Deck }) {
             onClick={async () => {
               const ok = await askConfirm({
                 title: 'Togliere le carte dalla collezione?',
-                message: `Le ${total} carte di questo mazzo vengono tolte dalla collezione. Il mazzo resta in Mazzi.`,
+                message: `Le ${total} carte di questo mazzo vengono tolte dalla collezione. Il mazzo resta in Deck.`,
                 confirmLabel: 'Togli',
                 danger: true,
               })
@@ -249,6 +276,21 @@ function setLegend(d: Deck, legend: Card, db: ReturnType<typeof useDb>) {
   d.runes = {}
   const per = Math.floor(RUNES_REQUIRED / Math.max(1, runes.length))
   runes.forEach((r, i) => (d.runes[r.id] = per + (i < RUNES_REQUIRED - per * runes.length ? 1 : 0)))
+}
+
+/** Aggiunge una copia: se il mazzo ha già la carta con un'altra stampa, aumenta quella. */
+function addCopy(d: Deck, c: Card, db: ReturnType<typeof useDb>) {
+  if (isBattlefield(c)) {
+    if (d.battlefields.length < BATTLEFIELDS_REQUIRED) d.battlefields.push(c.id)
+    return
+  }
+  const id = Object.keys(d.main).find((x) => db.byId.get(x)?.name === c.name) ?? c.id
+  d.main[id] = (d.main[id] ?? 0) + 1
+}
+
+function removeCopy(d: Deck, id: string) {
+  if ((d.main[id] ?? 0) <= 1) delete d.main[id]
+  else d.main[id] -= 1
 }
 
 function setChampion(d: Deck, champ: Card) {
@@ -387,7 +429,7 @@ function CoreCard({ card, label, note, owned }: { card: Card; label: string; not
   )
 }
 
-function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => void }) {
+function DeckTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) => void) => void; requestAdd: (c: Card) => void }) {
   const db = useDb()
   const location = useLocation()
   const names = useOwnedNames()
@@ -439,7 +481,7 @@ function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => 
                     qty={q}
                     max={isUnique(c) ? 1 : MAX_COPIES}
                     owned={names.get(c.name) ?? 0}
-                    onChange={(n) => setMain(c.id, n)}
+                    onChange={(n) => (n > q ? requestAdd(c) : setMain(c.id, n))}
                     note={c.id === deck.championId ? 'Campione scelto' : isSignature(c) ? 'Signature' : undefined}
                   />
                 ))}
@@ -590,7 +632,7 @@ function BattlefieldPicker({ options, owned, onPick }: { options: Card[]; owned:
 
 // ---------------------------------------------------------------------------
 
-function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => void }) {
+function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) => void) => void; requestAdd: (c: Card) => void }) {
   const db = useDb()
   const owned = useVault((s) => s.owned)
   const names = useOwnedNames()
@@ -600,6 +642,7 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
   const legend = db.byId.get(deck.legendId!)!
   const themes = useMemo(() => deckThemes(deck, db).slice(0, 10), [deck, db])
   const suggestions = useMemo(() => suggestCards(deck, db, { focus, owned, onlyOwned, limit: 30 }), [deck, db, focus, owned, onlyOwned])
+  const switches = useMemo(() => suggestSwitches(deck, db, owned), [deck, db, owned])
 
   const legal = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -624,11 +667,7 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
     isBattlefield(c)
       ? deck.battlefields.filter((id) => db.byId.get(id)?.name === c.name).length
       : Object.entries(deck.main).reduce((a, [id, n]) => a + (db.byId.get(id)?.name === c.name ? n : 0), 0)
-  const add = (c: Card) =>
-    edit((d) => {
-      if (!isBattlefield(c)) d.main[c.id] = (d.main[c.id] ?? 0) + 1
-      else if (d.battlefields.length < BATTLEFIELDS_REQUIRED) d.battlefields.push(c.id)
-    })
+  const add = requestAdd
   const maxFor = (c: Card) => (isBattlefield(c) ? (deck.battlefields.length < BATTLEFIELDS_REQUIRED ? 1 : 0) : isUnique(c) ? 1 : MAX_COPIES)
 
   return (
@@ -654,6 +693,15 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
         </ul>
       ) : (
         <>
+          <SwitchList
+            switches={switches}
+            onSwap={(s) =>
+              edit((d) => {
+                removeCopy(d, s.out.id)
+                addCopy(d, s.in, db)
+              })
+            }
+          />
           <section className="section">
             <div className="section-head">
               <h2>Suggerite per questo mazzo</h2>
@@ -686,6 +734,129 @@ function AddTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => v
         </>
       )}
     </div>
+  )
+}
+
+/** Switch suggeriti tra carte possedute e carte del mazzo (euristica, con i motivi). */
+function SwitchList({ switches, onSwap }: { switches: Switch[]; onSwap: (s: Switch) => void }) {
+  const location = useLocation()
+  return (
+    <section className="section">
+      <div className="section-head">
+        <h2>Switch suggeriti</h2>
+        <span className="tiny">{switches.length}</span>
+      </div>
+      <p className="muted picker-help">
+        Tra le carte che possiedi e quelle nel mazzo. Indizi, non regole: confronto solo quanto ogni carta è legata ai temi del mazzo, non quanto è forte.
+      </p>
+      {switches.length === 0 ? (
+        <p className="switch-none">
+          Nessuno switch suggerito: tra le carte che possiedi non ne trovo di chiaramente più legate ai temi del mazzo di quelle che ci sono già. Non vuol dire che il mazzo sia il migliore possibile, solo che questo criterio non trova scambi migliori.
+        </p>
+      ) : (
+        <motion.ul layout className="switches">
+          <AnimatePresence initial={false}>
+            {switches.map((s) => (
+              <motion.li key={`${s.out.id}>${s.in.id}`} layout className="switch" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 20 }}>
+                <div className="switch-cards">
+                  <Link to={`/carta/${s.out.id}`} state={{ background: location }} className="switch-card switch-out">
+                    <img src={cardImage(s.out)} alt="" loading="lazy" />
+                    <span>
+                      <em>Esce</em>
+                      {s.out.name}
+                    </span>
+                  </Link>
+                  <span className="switch-arrow" aria-hidden>
+                    →
+                  </span>
+                  <Link to={`/carta/${s.in.id}`} state={{ background: location }} className="switch-card switch-in">
+                    <img src={cardImage(s.in)} alt="" loading="lazy" />
+                    <span>
+                      <em>Entra</em>
+                      {s.in.name}
+                    </span>
+                  </Link>
+                </div>
+                <ul className="reasons">
+                  {s.reasons.slice(0, 3).map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+                <motion.button type="button" className="btn btn-primary btn-small" onClick={() => onSwap(s)} whileTap={{ scale: 0.95 }}>
+                  Scambia
+                </motion.button>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </motion.ul>
+      )}
+    </section>
+  )
+}
+
+/** Con il mazzo già a 40 carte: si sceglie subito quale carta togliere per far posto a quella nuova. */
+function ReplaceSheet({
+  deck,
+  card,
+  onClose,
+  onPick,
+  onAddAnyway,
+}: {
+  deck: Deck
+  card: Card | null
+  onClose: () => void
+  onPick: (outId: string) => void
+  onAddAnyway: () => void
+}) {
+  const db = useDb()
+  const owned = useVault((s) => s.owned)
+  const order = useMemo(() => (card ? removalOrder(deck, db, owned).filter((o) => o.card.name !== card.name) : []), [card, deck, db, owned])
+  return (
+    <AnimatePresence>
+      {card && (
+        <motion.div key="replace" className="sheet-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <button type="button" className="sheet-scrim" aria-label="Chiudi" onClick={onClose} />
+          <motion.div className="sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 360, damping: 34 }}>
+            <span className="sheet-grip" aria-hidden />
+            <div className="sheet-body replace-sheet">
+              <div className="replace-head">
+                <img src={cardImage(card)} alt="" />
+                <div>
+                  <h2>Con cosa la sostituisci?</h2>
+                  <p className="muted">
+                    Il mazzo ha già {countOf(deck.main)} carte. Scegli quale togliere per far posto a <strong>{card.name}</strong>. In cima quelle meno legate ai temi del mazzo (indizio, non regola).
+                  </p>
+                </div>
+              </div>
+              <ul className="rows">
+                {order.map((o, i) => (
+                  <li key={o.card.id} className="row replace-row">
+                    <button type="button" className="replace-pick" onClick={() => onPick(o.card.id)}>
+                      <span className="row-art">
+                        <img src={cardImage(o.card)} alt="" loading="lazy" />
+                      </span>
+                      <span className="row-body">
+                        <span className="row-name">
+                          {o.card.name} <span className="tiny">×{deck.main[o.card.id]}</span>
+                        </span>
+                        <span className="row-meta">
+                          {o.card.energy != null && <EnergyGlyph value={o.card.energy} />}
+                          {i < 3 && <span className="replace-tip">Suggerita</span>}
+                          <span>{o.reasons[0]}</span>
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="link-more replace-anyway" onClick={onAddAnyway}>
+                Aggiungila senza togliere niente ({countOf(deck.main) + 1} carte: il minimo è {MAIN_MIN}, regola 103.3)
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

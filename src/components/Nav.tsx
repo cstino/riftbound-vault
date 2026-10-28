@@ -20,7 +20,7 @@ const ITEMS = [
   },
   {
     to: '/mazzi',
-    label: 'Mazzi',
+    label: 'Deck',
     icon: (
       <>
         <rect x="6" y="7" width="12" height="13" rx="1.6" />

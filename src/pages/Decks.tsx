@@ -25,7 +25,7 @@ export function Decks() {
     <div>
       <header className="page-head">
         <div>
-          <h1>Mazzi</h1>
+          <h1>Deck</h1>
           <p>{decks.length} mazzi. Ogni mazzo viene controllato con le regole di costruzione ufficiali.</p>
         </div>
         <button className="btn btn-primary" onClick={create}>

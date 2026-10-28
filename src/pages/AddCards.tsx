@@ -384,7 +384,7 @@ function ProductCatalog() {
   async function remove(p: Product) {
     const ok = await askConfirm({
       title: `Togliere “${p.name.replace(/^.*?:\s*/, '')}”?`,
-      message: 'Le carte di questo prodotto vengono tolte dalla collezione. I mazzi restano in Mazzi.',
+      message: 'Le carte di questo prodotto vengono tolte dalla collezione. I mazzi restano in Deck.',
       confirmLabel: 'Togli',
       danger: true,
     })
@@ -399,7 +399,7 @@ function ProductCatalog() {
     <section className="section">
       <h2>Mazzi ufficiali in vendita</h2>
       <p className="muted picker-help">
-        Tocca quello che hai comprato: tutte le carte della scatola (Legend, campi e rune compresi) entrano nella collezione e il mazzo compare in Mazzi. Liste prese dal sito ufficiale di Riot.
+        Tocca quello che hai comprato: tutte le carte della scatola (Legend, campi e rune compresi) entrano nella collezione e il mazzo compare in Deck. Liste prese dal sito ufficiale di Riot.
       </p>
       <div className="product-list">
         {products.map((p) => {
