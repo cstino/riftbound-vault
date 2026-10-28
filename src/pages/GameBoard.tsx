@@ -417,7 +417,7 @@ function FanHand({
               type="button"
               className={`fan-card${actionsFor(o.uid).length ? ' is-actionable' : ''}${up ? ' fan-up' : ''}`}
               style={{ zIndex: up ? 50 : i + 1 }}
-              onClick={() => setPicked(up ? null : o.uid)}
+              onClick={() => onDetails(o.uid)}
               initial={{ opacity: 0, y: 160, x: 120, rotate: 20 }}
               animate={up ? { opacity: 1, x: 0, y: -150, rotate: 0, scale: 1.9 } : { opacity: 1, x: c * step, y: Math.abs(c) * Math.abs(c) * 1.4, rotate: c * spread, scale: 1 }}
               exit={{ opacity: 0, y: -260, scale: 1.3 }}
@@ -671,7 +671,7 @@ function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: Act
           <div className="obj-actions">
             {actions.map((a) => (
               <button key={a.id} type="button" className="btn btn-primary" onClick={() => run(a)}>
-                {a.label}
+                {a.label.replace(` ${o.card.name}`, '')}
               </button>
             ))}
           </div>

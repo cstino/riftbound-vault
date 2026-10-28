@@ -975,7 +975,7 @@
 }
 
 .obj-sheet {
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 140px minmax(0, 1fr);
   align-items: start;
 }
 
@@ -1009,17 +1009,18 @@
 }
 
 @media (max-width: 420px) {
+  /* carta e testo affiancati: azioni visibili senza scorrere */
   .obj-sheet {
-    grid-template-columns: 1fr;
-    justify-items: center;
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 12px;
   }
 
   .obj-img {
-    width: 180px;
+    width: 118px;
   }
 
-  .obj-info {
-    width: 100%;
+  .obj-info h2 {
+    font-size: 17px;
   }
 }
 
@@ -1551,4 +1552,12 @@ body.no-scroll {
   font-weight: 700;
   background: rgb(11 6 32 / 0.9);
   border: 1px solid rgb(59 216 242 / 0.5);
+}
+
+.obj-text {
+  overflow-wrap: anywhere;
+}
+
+.obj-actions .btn {
+  white-space: normal;
 }
