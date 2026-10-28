@@ -4,6 +4,13 @@ export const BASE = import.meta.env.BASE_URL
 
 export const asset = (path: string) => `${BASE}${path}`.replace(/\/{2,}/g, '/')
 
+/**
+ * Immagine della carta dal CDN ufficiale di Riot, ridimensionata dal CDN stesso.
+ * Le immagini non fanno parte del deploy (pesavano ~66 MB a ogni pubblicazione);
+ * la copia in images/ nel repository è solo un archivio.
+ */
+export const cardImage = (c: { image_url: string }) => `${c.image_url}?w=500&fm=webp&q=82`
+
 export const SET_ORDER = ['OGN', 'OGS', 'SFD', 'UNL', 'VEN', 'RAD']
 
 export const RARITY_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase']

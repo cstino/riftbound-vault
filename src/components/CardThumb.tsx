@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { motion } from 'motion/react'
 import { Link, useLocation } from 'react-router-dom'
 import type { Card } from '../lib/types'
-import { asset, isBattlefield } from '../lib/data'
+import { isBattlefield, cardImage } from '../lib/data'
 import './cardThumb.css'
 
 interface Props {
@@ -26,7 +26,7 @@ export const CardThumb = memo(function CardThumb({ card, qty = 0, dimIfMissing, 
     >
       <motion.img
         layoutId={`${layoutPrefix}-${card.id}`}
-        src={asset(card.image_file)}
+        src={cardImage(card)}
         alt=""
         loading="lazy"
         decoding="async"

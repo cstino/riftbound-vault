@@ -19,12 +19,14 @@ npm run dev
 | File | Contenuto | Fonte |
 |---|---|---|
 | `public/data/cards.json` | Tutte le carte | Galleria ufficiale (`scripts/update_cards.py`) |
-| `public/images/` | Immagini delle carte (WebP 500 px) | Galleria ufficiale |
+| `images/` | Archivio delle immagini (WebP 500 px), **non pubblicato** | Galleria ufficiale |
 | `public/data/rules.json` | Core Rules suddivise per numero | `rules/core-rules-*.txt` (`scripts/extract_rules.py`) |
 | `public/data/collection.json` | Collezione iniziale | File Excel di partenza |
 | `public/data/decks.json` | 6 mazzi precostruiti | File Excel, verificati sulle liste ufficiali |
 
 La galleria ufficiale contiene errori su **Radiance**: tipi e domini sbagliati o vuoti su decine di carte. `scripts/update_cards.py` li corregge (tipo dal testo ufficiale di accessibilità, dominio dalla numerazione per blocchi) e il test `src/test/content.test.ts` lo verifica: i 6 mazzi precostruiti devono risultare legali.
+
+L’app carica le immagini delle carte dal CDN ufficiale di Riot (`cardImage` in `src/lib/data.ts`), così ogni deploy pesa ~2,5 MB invece di ~70 MB.
 
 Collezione e mazzi modificati nell’app restano nel browser (IndexedDB).
 

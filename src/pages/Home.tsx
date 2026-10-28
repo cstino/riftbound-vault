@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useDb } from '../lib/useDb'
 import { useVault } from '../lib/store'
-import { isBasePrinting, rarityRank, SET_ORDER, asset } from '../lib/data'
+import { isBasePrinting, rarityRank, SET_ORDER, cardImage } from '../lib/data'
 import { validateDeck } from '../lib/deck'
 import { GLOSSARY_BY_ID } from '../data/glossary'
 import { LEARN } from '../data/learn'
@@ -123,7 +123,7 @@ export function Home() {
             const legal = validateDeck(d, db).length === 0
             return (
               <Link key={d.id} to={`/mazzi/${d.id}`} className="deck-chip">
-                {champ && <img src={asset(champ.image_file)} alt="" loading="lazy" />}
+                {champ && <img src={cardImage(champ)} alt="" loading="lazy" />}
                 <span className="deck-chip-body">
                   <strong>{d.name}</strong>
                   <span>{legend?.domains.join(' / ') ?? 'Da completare'}</span>

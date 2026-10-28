@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react'
 import type { Card } from '../lib/types'
-import { asset, isBattlefield } from '../lib/data'
+import { isBattlefield, cardImage } from '../lib/data'
 import './holoCard.css'
 
 const SHEEN: Record<string, number> = { Common: 0.08, Uncommon: 0.16, Rare: 0.32, Epic: 0.45, Showcase: 0.7 }
@@ -39,7 +39,7 @@ export function HoloCard({ card, layoutId }: { card: Card; layoutId?: string }) 
   return (
     <div className={`holo-stage${landscape ? ' holo-land' : ''}`} onPointerMove={onMove} onPointerLeave={onLeave}>
       <motion.div ref={ref} className="holo-card" style={reduce ? undefined : { rotateX: rx, rotateY: ry }}>
-        <motion.img layoutId={layoutId} src={asset(card.image_file)} alt={card.name} draggable={false} />
+        <motion.img layoutId={layoutId} src={cardImage(card)} alt={card.name} draggable={false} />
         {!reduce && (
           <>
             <motion.div className="holo-sheen" style={{ background: holo, opacity: strength }} />

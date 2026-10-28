@@ -8,6 +8,7 @@
 
 ## Dati
 - `scripts/update_cards.py` rigenera carte e immagini dalla galleria ufficiale (richiede accesso a playriftbound.com e cmsassets.rgpub.io). Unisce più download perché la galleria a volte omette carte.
+- Le immagini delle carte si caricano dal CDN di Riot (`cardImage`): non rimetterle in `public/`, ogni deploy su Vercel le ricopierebbe (~66 MB). `images/` è solo un archivio.
 - I dati di Radiance nella galleria hanno tipi e domini sbagliati: vedi `fix_radiance_domains` e la correzione del tipo in `build()`.
 
 ## UI

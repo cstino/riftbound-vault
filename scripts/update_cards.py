@@ -1,4 +1,4 @@
-"""Scarica la galleria ufficiale di Riftbound e rigenera public/data/cards.json + public/images/.
+"""Scarica la galleria ufficiale di Riftbound e rigenera public/data/cards.json + images/ (archivio, non pubblicato).
 
 Uso: python3 scripts/update_cards.py   (dalla radice del repository)
 Richiede accesso a playriftbound.com e cmsassets.rgpub.io.
@@ -114,11 +114,11 @@ def fix_radiance_domains(cards):
 
 
 def download_images(cards):
-    os.makedirs(os.path.join(PUBLIC, "images"), exist_ok=True)
-    todo = [c for c in cards if not os.path.exists(os.path.join(PUBLIC, c["image_file"]))]
+    os.makedirs("images", exist_ok=True)
+    todo = [c for c in cards if not os.path.exists(c["image_file"])]
 
     def get(c):
-        with open(os.path.join(PUBLIC, c["image_file"]), "wb") as f:
+        with open(c["image_file"], "wb") as f:
             f.write(fetch(c["image_url"] + IMG_PARAMS))
 
     with ThreadPoolExecutor(12) as pool:

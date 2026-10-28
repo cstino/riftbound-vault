@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link, useLocation } from 'react-router-dom'
 import { GLOSSARY_BY_ID } from '../data/glossary'
-import { loadRules, rulesUnder, asset } from '../lib/data'
+import { loadRules, rulesUnder, cardImage } from '../lib/data'
 import type { RuleEntry } from '../lib/types'
 import { useDb } from '../lib/useDb'
 import './explainer.css'
@@ -58,7 +58,7 @@ export function Explainer({ id, headingLevel = 3 }: { id: string; headingLevel?:
               if (!c) return null
               return (
                 <Link key={cid} to={`/carta/${cid}`} state={{ background: location.state?.background ?? location }}>
-                  <img src={asset(c.image_file)} alt={c.name} loading="lazy" />
+                  <img src={cardImage(c)} alt={c.name} loading="lazy" />
                 </Link>
               )
             })}

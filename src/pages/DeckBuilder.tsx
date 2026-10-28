@@ -14,6 +14,7 @@ import {
   isSignature,
   legendChampionTag,
   sortCards,
+  cardImage,
 } from '../lib/data'
 import {
   BATTLEFIELDS_REQUIRED,
@@ -205,7 +206,7 @@ function PickerGrid({ cards, onPick, ownedNames }: { cards: Card[]; onPick: (c: 
           transition={{ delay: Math.min(i, 12) * 0.03 }}
           whileTap={{ scale: 0.96 }}
         >
-          <img src={asset(c.image_file)} alt={c.name} loading="lazy" />
+          <img src={cardImage(c)} alt={c.name} loading="lazy" />
           {ownedNames.get(c.name) ? <span className="thumb-qty">×{ownedNames.get(c.name)}</span> : null}
         </motion.button>
       ))}
@@ -269,7 +270,7 @@ function Row({ card, qty, max, owned, onChange, note }: { card: Card; qty: numbe
   return (
     <motion.li layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="row">
       <Link to={`/carta/${card.id}`} state={{ background: location }} className="row-art">
-        <img src={asset(card.image_file)} alt="" loading="lazy" />
+        <img src={cardImage(card)} alt="" loading="lazy" />
       </Link>
       <div className="row-body">
         <p className="row-name">{card.name}</p>
@@ -310,7 +311,7 @@ function CoreCard({ card, label, note, owned }: { card: Card; label: string; not
   const location = useLocation()
   return (
     <Link to={`/carta/${card.id}`} state={{ background: location }} className="core-card">
-      <img src={asset(card.image_file)} alt={card.name} loading="lazy" />
+      <img src={cardImage(card)} alt={card.name} loading="lazy" />
       <span className="core-card-label">{label}</span>
       <span className="core-card-name">{card.name}</span>
       <span className="tiny">{note}</span>
@@ -419,7 +420,7 @@ function DeckTab({ deck, edit }: { deck: Deck; edit: (fn: (d: Deck) => void) => 
             if (!b) return null
             return (
               <button key={bid} type="button" className="bf" onClick={() => edit((d) => void (d.battlefields = d.battlefields.filter((x) => x !== bid)))} aria-label={`Togli ${b.name}`}>
-                <img src={asset(b.image_file)} alt="" />
+                <img src={cardImage(b)} alt="" />
                 <span>{b.name}</span>
                 <span className="bf-x">✕</span>
               </button>
@@ -492,7 +493,7 @@ function BattlefieldPicker({ options, owned, onPick }: { options: Card[]; owned:
         <div className="bf-grid">
           {shown.map((b) => (
             <button key={b.id} type="button" className="bf" onClick={() => onPick(b)}>
-              <img src={asset(b.image_file)} alt="" loading="lazy" />
+              <img src={cardImage(b)} alt="" loading="lazy" />
               <span>
                 {b.name} {owned.get(b.name) ? <em className="ok">· ce l’hai</em> : null}
               </span>
@@ -629,7 +630,7 @@ function SuggestionRow({
   return (
     <motion.li layout className="row row-suggest" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <Link to={`/carta/${card.id}`} state={{ background: location }} className="row-art">
-        <img src={asset(card.image_file)} alt="" loading="lazy" />
+        <img src={cardImage(card)} alt="" loading="lazy" />
       </Link>
       <div className="row-body">
         <p className="row-name">{card.name}</p>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, type PanInfo } from 'motion/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { Card } from '../lib/types'
-import { asset } from '../lib/data'
+import { cardImage } from '../lib/data'
 import './coverflow.css'
 
 /** Carosello con la carta centrale in primo piano e le vicine inclinate e sfocate. */
@@ -48,7 +48,7 @@ export function Coverflow({ cards, caption }: { cards: Card[]; caption?: (c: Car
               }}
               transition={{ type: 'spring', stiffness: 260, damping: 30 }}
             >
-              <motion.img layoutId={`cover-${c.id}`} src={asset(c.image_file)} alt="" draggable={false} />
+              <motion.img layoutId={`cover-${c.id}`} src={cardImage(c)} alt="" draggable={false} />
               {o === 0 && <span className="cover-glow" aria-hidden />}
             </motion.button>
           )

@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useDb } from '../lib/useDb'
 import { useVault } from '../lib/store'
-import { asset } from '../lib/data'
+import { cardImage } from '../lib/data'
 import { countOf, emptyDeck, validateDeck } from '../lib/deck'
 import { DomainIcon } from '../components/Icons'
 import { ownedCoverage } from './deckUtils'
@@ -43,7 +43,7 @@ export function Decks() {
             <motion.div key={d.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}>
               <Link to={`/mazzi/${d.id}`} className="deck-card">
                 <div className="deck-card-art">
-                  {champ ? <img src={asset(champ.image_file)} alt="" loading="lazy" /> : <span className="deck-card-placeholder">?</span>}
+                  {champ ? <img src={cardImage(champ)} alt="" loading="lazy" /> : <span className="deck-card-placeholder">?</span>}
                 </div>
                 <div className="deck-card-body">
                   <div className="deck-card-title">
