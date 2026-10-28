@@ -89,6 +89,8 @@ function chooseAct(g: Game, d: Extract<Decision, { type: 'act' }>, mem: AiMemory
   for (const a of acts) {
     let s = 0
     if (a.kind === 'play') s = playScore(g, p, a)
+    // nascondere: dopo le giocate utili, se resta Power per farlo
+    else if (a.kind === 'hide' && d.context === 'main') s = 0.7
     else if (a.kind === 'ability') {
       const o = a.uid != null ? get(g, a.uid) : undefined
       if (a.id.startsWith('ab-empower') && d.context === 'main') s = 1.5

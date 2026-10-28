@@ -333,7 +333,7 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
   const them = friendlyAt(g, OPP, loc)
   const us = friendlyAt(g, ME, loc)
   const gear = [...g.objs.values()].filter((o) => o.zone === 'board' && o.loc === loc && !/Unit/.test(o.card.type))
-  const face = bf.facedown !== null ? g.objs.get(bf.facedown) : undefined
+  const faces = bf.facedown.map((u) => g.objs.get(u)!)
   const owner = bf.controller === ME ? 'me' : bf.controller === OPP ? 'opp' : 'none'
   return (
     <div className={`bf bf-${owner}${sd ? ' bf-live' : ''}`}>
@@ -357,14 +357,14 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
           ))}
         </AnimatePresence>
       </div>
-      {(face || gear.length > 0) && (
+      {(faces.length > 0 || gear.length > 0) && (
         <div className="bf-extra tiny">
-          {face && (
-            <button type="button" className={`facedown${actionsFor(face.uid).length ? ' is-actionable' : ''}`} onClick={() => (face.controller === ME ? onObj(face.uid) : undefined)}>
+          {faces.map((face) => (
+            <button key={face.uid} type="button" className={`facedown${actionsFor(face.uid).length ? ' is-actionable' : ''}`} onClick={() => (face.controller === ME ? onObj(face.uid) : undefined)}>
               <span className="card-back facedown-back" aria-hidden />
               {face.controller === ME ? `Nascosta: ${face.card.name}` : 'Carta nascosta del PC'}
             </button>
-          )}
+          ))}
           {gear.map((o) => (
             <button key={o.uid} type="button" onClick={() => onObj(o.uid)}>
               {o.card.name}
@@ -372,7 +372,7 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
           ))}
         </div>
       )}
-      {unitsAt(g, loc).length === 0 && !face && <span className="bf-empty tiny">nessuna unità</span>}
+      {unitsAt(g, loc).length === 0 && !faces.length && <span className="bf-empty tiny">nessuna unità</span>}
     </div>
   )
 }

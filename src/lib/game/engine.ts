@@ -191,11 +191,12 @@ export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string],
       scored: [],
       played: 0,
       fanfare: 0,
+      anyBf: 0,
     }
     // 487.5: nel Duel il campo si estrae a caso; 488.5: nel Match lo si sceglie
     const pick = picks[p]
     const bf = pick != null && s.battlefields[pick] ? s.battlefields[pick] : s.battlefields[Math.floor(g.rand() * s.battlefields.length)]
-    g.bfs.push({ loc: p === 0 ? 'bf0' : 'bf1', card: bf, owner: p, controller: null, contested: null, facedown: null })
+    g.bfs.push({ loc: p === 0 ? 'bf0' : 'bf1', card: bf, owner: p, controller: null, contested: null, facedown: [] })
   }
   g.first = g.rand() < 0.5 ? 0 : 1 // 115
   g.turnPlayer = g.first
@@ -208,7 +209,7 @@ export function spawn(g: Game, card: Card, owner: PID, zone: Zone, loc: LocId | 
   o.loc = loc
   const list = listFor(g, o, zone)
   if (list) list.push(o.uid)
-  if (zone === 'facedown' && loc) bfAt(g, loc).facedown = o.uid
+  if (zone === 'facedown' && loc) bfAt(g, loc).facedown.push(o.uid)
   return o
 }
 
@@ -242,7 +243,10 @@ export function moveZone(g: Game, o: Obj, zone: Zone, opts: { loc?: LocId | null
   const from = listFor(g, o, o.zone)
   if (from) from.splice(from.indexOf(o.uid), 1)
   if (o.zone === 'champion') g.players[o.owner].champion = null
-  if (o.zone === 'facedown' && o.loc) bfAt(g, o.loc).facedown = null
+  if (o.zone === 'facedown' && o.loc) {
+    const fd = bfAt(g, o.loc).facedown
+    fd.splice(fd.indexOf(o.uid), 1)
+  }
   for (const gear of board(g).filter((x) => x.attachedTo === o.uid)) gear.attachedTo = null // 436.4.b
   g.objs.delete(o.uid)
   if (o.token && zone !== 'board' && zone !== 'chain') {
@@ -480,6 +484,11 @@ export function firePlayed(g: Game, played: Obj, p: PID) {
   }
   // Fanfare: "The next three times you play a unit this turn, draw 1" (abilità ritardata, 391)
   const pl = g.players[p]
+  if (isUnit(played) && pl.anyBf > 0) {
+    // Last Caress: "The next unit you play this turn ... When you play it, buff it."
+    pl.anyBf = 0
+    queueTrig(g, { label: 'Last Caress: buff', resolve: function* (g, ctx) { buffUnit(g, ctx.self) } }, played, p)
+  }
   if (isUnit(played) && pl.fanfare > 0) {
     pl.fanfare--
     queueTrig(g, { label: 'Fanfare: pesca 1', resolve: function* (g, ctx) { yield* draw(g, ctx.p, 1) } }, played, p)
@@ -525,6 +534,7 @@ export function kw(g: Game, o: Obj): Keywords {
     backline: !!s.backline,
     ganking: !!s.ganking,
     deflect: s.deflect ?? 0,
+    temporary: !!s.temporary || !!o.temporary, // 816.3
   }
   const d: Partial<Keywords> = { ...(impl.keywords?.(g, o) ?? {}) }
   for (const a of auras(g, o)) {
@@ -543,6 +553,7 @@ export function kw(g: Game, o: Obj): Keywords {
   k.tank ||= !!d.tank
   k.ganking ||= !!d.ganking
   k.backline ||= !!d.backline
+  k.temporary ||= !!d.temporary
   for (const m of o.mods) {
     k.assault += m.assault ?? 0
     k.shield += m.shield ?? 0
@@ -606,7 +617,7 @@ export function* chooseUnit(
     (o) =>
       filter(o) &&
       targetable(g, ctx.p, o) &&
-      (!ctx.hiddenAt || !isBf(o.loc) || o.loc === ctx.hiddenAt || ctx.data.__noHiddenRestriction) &&
+      (!ctx.hiddenAt || o.loc === ctx.hiddenAt || ctx.data.__noHiddenRestriction) /* 811.1.d.2-3 */ &&
       canPay(g, ctx.p, withAny(base, ctx.extraPower + deflectCost(g, ctx.p, o))),
   )
   const r = yield* choose(g, ctx.p, title, cands.map((o) => unitOption(g, o, aiScore(o), ctx.p)), 1, 1, { cancel: opts.cancel, rule: opts.rule })
@@ -637,6 +648,7 @@ function powerSources(g: Game, p: PID): PowerSource[] {
   const pl = g.players[p]
   const out: PowerSource[] = []
   for (const d of DOMAINS) for (let i = 0; i < (pl.pool.power[d] ?? 0); i++) out.push({ kind: 'pool', domain: d })
+  for (let i = 0; i < (pl.pool.any ?? 0); i++) out.push({ kind: 'pool', domain: 'any' })
   // 187.5: un Gold pronto si può uccidere ed esaurire per aggiungere [A] (430.3, 445.2.c)
   for (const o of board(g)) if (o.controller === p && o.card.name === 'Gold' && !o.exhausted) out.push({ kind: 'gold', domain: 'any', uid: o.uid })
   const runes = pl.runes.map((u) => g.objs.get(u)!)
@@ -694,6 +706,7 @@ export function pay(g: Game, p: PID, c: Cost) {
   for (const i of match) {
     const s = sources[i]
     if (s.kind === 'pool' && s.domain !== 'any') pl.pool.power[s.domain] = (pl.pool.power[s.domain] ?? 0) - 1
+    else if (s.kind === 'pool') pl.pool.any = (pl.pool.any ?? 0) - 1
   }
   for (const i of match) {
     const s = sources[i]
@@ -721,9 +734,16 @@ export function addEnergy(g: Game, p: PID, n: number, why: string) {
   log(g, `${pname(g, p)} aggiunge ${n} energia alla riserva (${why}).`, '430', p)
 }
 
+/** [Add] [A]: 1 Power di qualsiasi dominio nella riserva (430). */
+export function addAnyPower(g: Game, p: PID, n: number, why: string) {
+  const pool = g.players[p].pool
+  pool.any = (pool.any ?? 0) + n
+  log(g, `${pname(g, p)} aggiunge ${n} Power di qualsiasi dominio alla riserva (${why}).`, '430', p)
+}
+
 function emptyPools(g: Game, rule: string) {
   for (const pl of g.players) {
-    if (pl.pool.energy || Object.values(pl.pool.power).some(Boolean)) log(g, `La riserva di ${pl.name} si svuota.`, rule, pl.id)
+    if (pl.pool.energy || pl.pool.any || Object.values(pl.pool.power).some(Boolean)) log(g, `La riserva di ${pl.name} si svuota.`, rule, pl.id)
     pl.pool = { energy: 0, power: {} }
   }
 }
@@ -923,13 +943,20 @@ export function* cleanup(g: Game): Gen {
       }
     }
     for (const bf of g.bfs) {
-      if (bf.facedown !== null) {
-        const f = g.objs.get(bf.facedown)!
+      for (const f of bf.facedown.map((u) => g.objs.get(u)!)) {
         if (bf.controller !== f.controller) {
           log(g, `La carta nascosta a ${bfName(g, bf.loc)} va nel trash: il campo non è più di chi l’ha nascosta.`, '323.6.a')
           moveZone(g, f, 'trash')
           changed = true
         }
+      }
+      // 107.3.b.2: se la capienza scende, il controllore mette nel trash le carte in eccesso
+      const over = bf.facedown.length - hideCap(g, bf)
+      if (over > 0 && bf.controller !== null) {
+        const fd = bf.facedown.map((u) => g.objs.get(u)!)
+        const r = yield* choose(g, bf.controller, `${bfName(g, bf.loc)} può tenere meno carte coperte: quali metti nel trash?`, fd.map((o) => ({ label: o.card.name, uid: o.uid, ai: -(o.card.energy ?? 0) })), over, over, { rule: '107.3.b.2' })
+        for (const i of r ?? []) moveZone(g, fd[i], 'trash')
+        changed = true
       }
     }
     // 323.10: si toglie lo stato Contested se chi l'ha applicato non ha più unità lì
@@ -1191,7 +1218,7 @@ export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold'): 
     yield* draw(g, p, 1)
   } else gainPoints(g, p, 1, how === 'conquer' ? '471.1' : '471.2', `conquista ${bfName(g, bf.loc)}`)
   // 473.2: effetti di conquista o di tenuta
-  for (const o of friendlyAt(g, p, loc)) {
+  for (const o of board(g).filter((x) => x.controller === p && x.loc === loc)) {
     const def = how === 'conquer' ? implOf(o.card.name).conquer : implOf(o.card.name).hold
     if (def) queueTrig(g, def, o, p)
   }
@@ -1273,6 +1300,8 @@ function cardSpeed(o: Obj, src: PlaySource): 'normal' | 'action' | 'reaction' {
 
 /** Dove si può giocare un'unità (355.2): base, campi controllati, e con Ambush i campi con proprie unità (822). */
 export function unitLocs(g: Game, p: PID, o: Obj, src: PlaySource, w: Window): LocId[] {
+  // Last Caress: "can be played to any battlefield", anche da coperta (esempio di 811.1.d.3)
+  if (g.players[p].anyBf > 0 && (src === 'facedown' || speedOk(cardSpeed(o, src), w))) return [...(src === 'facedown' ? [] : [baseOf(p)]), ...g.bfs.map((b) => b.loc)]
   if (src === 'facedown') return [o.loc!] // 811.1.d.1
   const s = implOf(o.card.name).static ?? {}
   const out = new Set<LocId>()
@@ -1326,13 +1355,12 @@ export function available(g: Game, p: PID): ActionOpt[] {
     if (implOf(o.card.name).flow) addPlay(o, 'trash', `Gioca ${o.card.name} dal trash (Flow)`)
   }
   for (const bf of g.bfs) {
-    if (bf.facedown === null) continue
-    const o = g.objs.get(bf.facedown)!
-    if (o.controller === p) addPlay(o, 'facedown', `Gioca ${o.card.name} da nascosta (${bfName(g, bf.loc)})`)
+    for (const o of bf.facedown.map((u) => g.objs.get(u)!))
+      if (o.controller === p) addPlay(o, 'facedown', `Gioca ${o.card.name} da nascosta (${bfName(g, bf.loc)})`)
   }
   // 811.1.b: nascondere una carta nel proprio turno, in stato aperto
   if (g.turnPlayer === p && !g.chain.length && canPay(g, p, { energy: 0, power: [ANY] })) {
-    const spots = g.bfs.filter((b) => b.controller === p && b.facedown === null)
+    const spots = g.bfs.filter((b) => b.controller === p && b.facedown.length < hideCap(g, b))
     if (spots.length) {
       const hideable = [...pl.hand, ...(pl.champion !== null ? [pl.champion] : [])]
         .map((u) => g.objs.get(u)!)
@@ -1370,7 +1398,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
   const pl = g.players[p]
   const w: Window = opts.limited ? 'main' : windowFor(g, p)!
   const ctx = newCtx(o, p, src)
-  const hiddenAt = ctx.hiddenAt
+  let hiddenAt = ctx.hiddenAt
   // 355.1.a: costo aggiuntivo opzionale
   if (impl.optional) {
     const opt = impl.optional
@@ -1443,7 +1471,9 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       if (!r) return false
       loc = locs[r[0]]
     }
-  } else if (isGear(o) && impl.static?.deploy) {
+    if (src === 'facedown') hiddenAt = ctx.hiddenAt = loc // 811.1.d.3: si sceglie nel campo in cui è giocata
+  } else if (isGear(o) && src === 'facedown') loc = o.loc // 811.1.d.1.a
+  else if (isGear(o) && impl.static?.deploy) {
     // 830.1.b.1: si gioca in un campo qualsiasi
     const r = yield* choose(g, p, `In quale campo giochi ${o.card.name}?`, g.bfs.map((b) => ({ label: bfName(g, b.loc), loc: b.loc, ai: b.controller === p ? 1 : 0 })), 1, 1, { cancel: true, rule: '830.1.b' })
     if (!r) return false
@@ -1472,6 +1502,13 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
     if (r) yield* kill(g, [mine[r[0]]], `costo di ${o.card.name}`, '357.2')
   }
   pl.played++
+  if (src === 'facedown') {
+    // "When you play a card from face down"
+    for (const x of [g.objs.get(pl.legend)!, ...board(g).filter((x) => x.controller === p)]) {
+      const def = implOf(x.card.name).facedownPlays
+      if (def) queueTrig(g, def, x, p, { card: onChain })
+    }
+  }
   if (isUnit(onChain) || isGear(onChain)) {
     // 337.2 / 359.2: i permanenti si risolvono subito ed entrano sulla board
     const perm = moveZone(g, onChain, 'board', { loc })
@@ -1487,9 +1524,11 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
     applyContested(g, perm)
     if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt, showed: ctx.data.showed })
     firePlayed(g, perm, p)
-    if (isUnit(perm) && isBf(loc)) {
-      const bdef = implOf(bfAt(g, loc).card.name).bfUnitPlayed
-      if (bdef) queueTrig(g, bdef, { ...perm, card: bfAt(g, loc).card }, p, { unit: perm })
+    if (isBf(loc)) {
+      g.turnFlags.add(`bfplay-${p}`) // "if you've played a unit or gear to a battlefield this turn"
+      const bimpl = implOf(bfAt(g, loc).card.name)
+      if (isUnit(perm) && bimpl.bfUnitPlayed) queueTrig(g, bimpl.bfUnitPlayed, { ...perm, card: bfAt(g, loc).card }, p, { unit: perm })
+      if (bimpl.bfPermPlayed) queueTrig(g, bimpl.bfPermPlayed, { ...perm, card: bfAt(g, loc).card }, p, { unit: perm })
     }
     if (isGear(perm)) {
       for (const x of board(g).filter((x) => x.controller !== p)) {
@@ -1515,8 +1554,20 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
 
 function* noop(): Gen {}
 
+/** Capienza della Facedown Zone di un campo (107.3.b): 1, più gli effetti che la aumentano. */
+export function hideCap(g: Game, bf: Battlefield): number {
+  let n = 1 + (implOf(bf.card.name).hideExtra?.(g, bfObj(g, bf), bf) ?? 0)
+  for (const o of board(g)) if (o.loc === bf.loc) n += implOf(o.card.name).hideExtra?.(g, o, bf) ?? 0
+  return n
+}
+
+/** Pseudo-oggetto per le abilità di un campo, controllato da chi lo controlla. */
+function bfObj(g: Game, bf: Battlefield): Obj {
+  return { ...(g.objs.get(g.players[bf.controller ?? bf.owner].legend) as Obj), card: bf.card, controller: bf.controller ?? bf.owner }
+}
+
 function* hideCard(g: Game, p: PID, o: Obj): Gen<boolean> {
-  const spots = g.bfs.filter((b) => b.controller === p && b.facedown === null)
+  const spots = g.bfs.filter((b) => b.controller === p && b.facedown.length < hideCap(g, b))
   const r = yield* choose(g, p, `Dove nascondi ${o.card.name}?`, spots.map((b) => ({ label: bfName(g, b.loc), loc: b.loc })), 1, 1, { cancel: true, rule: '811.1.b' })
   if (!r) return false
   const bf = spots[r[0]]
@@ -1524,8 +1575,10 @@ function* hideCard(g: Game, p: PID, o: Obj): Gen<boolean> {
   const f = moveZone(g, o, 'facedown', { loc: bf.loc })
   f.controller = p
   f.hiddenTurn = g.turn
-  bf.facedown = f.uid
+  bf.facedown.push(f.uid)
   log(g, `${pname(g, p)} nasconde una carta coperta a ${bfName(g, bf.loc)}.`, '811.1.b', p)
+  const bdef = implOf(bf.card.name).bfHide
+  if (bdef) queueTrig(g, bdef, { ...g.objs.get(g.players[p].legend)!, card: bf.card, controller: p }, p, { loc: bf.loc })
   return true
 }
 
@@ -1689,13 +1742,14 @@ function* mulligan(g: Game, p: PID): Gen {
   log(g, `${pname(g, p)} rimette ${picks.length} cart${picks.length === 1 ? 'a' : 'e'} in fondo al mazzo e ne pesca altrettante.`, '117', p)
 }
 
-function* takeTurn(g: Game): Gen {
+export function* takeTurn(g: Game): Gen {
   const p = g.turnPlayer
   const pl = g.players[p]
   for (const x of g.players) {
     x.scored = []
     x.played = 0
     x.fanfare = 0
+    x.anyBf = 0
   }
   for (const o of g.objs.values()) o.moves = 0
   g.diedThisTurn = 0
@@ -1706,6 +1760,12 @@ function* takeTurn(g: Game): Gen {
   for (const o of g.objs.values()) if (o.controller === p && (o.zone === 'board' || o.zone === 'runes' || o.zone === 'legend')) o.exhausted = false
   // 315.2: Beginning, poi Scoring (tiene i campi controllati)
   g.phase = 'beginning'
+  // 816.1.b: Temporary, prima del punteggio
+  const temp = board(g).filter((o) => o.controller === p && kw(g, o).temporary)
+  if (temp.length) {
+    yield* kill(g, temp, 'Temporary', '816.1.b')
+    yield* settle(g)
+  }
   for (const bf of g.bfs) if (bf.controller === p) yield* scoreBf(g, p, bf.loc, 'hold')
   yield* settle(g)
   if (g.winner !== null) return

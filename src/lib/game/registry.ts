@@ -1,7 +1,7 @@
 // Registro delle carte implementate nel motore di partita. Una carta è giocabile solo se è qui
 // (con le sue abilità scritte e testate in src/test/game*.test.ts).
 import type { Domain } from '../types'
-import type { Game, Gen, LocId, Obj, PID, Trigger } from './types'
+import type { Battlefield, Game, Gen, LocId, Obj, PID, Trigger } from './types'
 
 export interface Ctx {
   self: Obj
@@ -31,6 +31,8 @@ export interface Keywords {
   backline: boolean
   ganking: boolean
   deflect: number
+  /** 816: ucciso all'inizio della Beginning Phase del controllore, prima del punteggio. */
+  temporary: boolean
 }
 
 export interface Static extends Partial<Keywords> {
@@ -125,6 +127,14 @@ export interface CardImpl {
   allyPlays?: TrigDef
   /** Campi: "the first time ... a non-token unit they control dies here" (ctx.data.unit). */
   bfUnitDies?: TrigDef
+  /** Capienza in più della Facedown Zone (107.3.b.1): da un campo o da un permanente lì. */
+  hideExtra?: (g: Game, self: Obj, bf: Battlefield) => number
+  /** Campi: "When you hide a card here" (ctx.data.loc). */
+  bfHide?: TrigDef
+  /** "When you play a card from face down" (ctx.data.card). */
+  facedownPlays?: TrigDef
+  /** Campi: "plays a unit or gear here" (ctx.data.unit). */
+  bfPermPlayed?: TrigDef
   /** Campi: "When you defend here". */
   bfDefend?: TrigDef
   keywords?: (g: Game, self: Obj) => Partial<Keywords>

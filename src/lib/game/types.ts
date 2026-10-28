@@ -61,11 +61,15 @@ export interface Obj {
   role: Role | null
   /** Ha partecipato al combattimento in corso. */
   inCombat: boolean
+  /** Temporary dato da un effetto (816). */
+  temporary?: boolean
 }
 
 export interface Pool {
   energy: number
   power: Partial<Record<Domain, number>>
+  /** Power di qualsiasi dominio ([Add] [A]). */
+  any?: number
 }
 
 export interface PlayerState {
@@ -88,6 +92,8 @@ export interface PlayerState {
   played: number
   /** Fanfare: quante delle prossime unità giocate in questo turno fanno pescare 1. */
   fanfare: number
+  /** Last Caress: la prossima unità giocata in questo turno può andare in qualsiasi campo. */
+  anyBf: number
 }
 
 export interface Battlefield {
@@ -97,7 +103,8 @@ export interface Battlefield {
   controller: PID | null
   /** Giocatore che ha applicato lo stato Contested (190.3). */
   contested: PID | null
-  facedown: number | null
+  /** Carte coperte nella Facedown Zone del campo (107.3). */
+  facedown: number[]
 }
 
 export interface ChainItem {

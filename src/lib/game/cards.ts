@@ -87,7 +87,7 @@ export function giveMight(g: Game, o: Obj, n: number, source: string) {
 }
 
 /** Sceglie una destinazione valida per un movimento causato da un effetto (355.4). */
-function* chooseDest(g: Game, ctx: Ctx, o: Obj, aiPrefer: (l: LocId) => number) {
+export function* chooseDest(g: Game, ctx: Ctx, o: Obj, aiPrefer: (l: LocId) => number) {
   const dests = effectDests(g, o)
   const r = yield* choose(g, ctx.p, `Dove sposti ${o.card.name}?`, dests.map((l) => ({ label: locName(g, l, ctx.p), loc: l, ai: aiPrefer(l) })), 1, 1, { cancel: true, rule: '355.4' })
   return r ? dests[r[0]] : null

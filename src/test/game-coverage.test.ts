@@ -8,12 +8,12 @@ import { db, officialDeck } from './gameHelpers'
 const TESTED = new Set(
   readdirSync('src/test')
     .filter((f) => /^game-cards.*\.test\.ts$/.test(f))
-    .flatMap((f) => [...readFileSync(`src/test/${f}`, 'utf8').matchAll(/card\('([^']+)'/g)].map((m) => m[1].replace(/\\'/g, "'"))),
+    .flatMap((f) => [...readFileSync(`src/test/${f}`, 'utf8').matchAll(/card\('((?:[^'\\]|\\.)+)'/g)].map((m) => m[1].replace(/\\'/g, "'"))),
 )
 // le rune base sono testate a parte con un ciclo
 for (const r of ['Fury Rune', 'Chaos Rune', 'Calm Rune', 'Order Rune', 'Mind Rune', 'Body Rune']) TESTED.add(r)
 
-const PLAYABLE = ['Zed', 'Shen', 'Vi', 'Rumble', 'Seraphine']
+const PLAYABLE = ['Zed', 'Shen', 'Vi', 'Rumble', 'Seraphine', 'Evelynn']
 
 describe('copertura', () => {
   for (const name of PLAYABLE) {

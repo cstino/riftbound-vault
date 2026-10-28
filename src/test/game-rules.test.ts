@@ -225,7 +225,7 @@ describe('tempi di gioco', () => {
     runes(g, 1, 'Calm')
     add(g, 1, 'Disciple of Shen')
     act(g, 1, 'Nascondi Disciple of Shen', [pick('Grove')])
-    expect(g.bfs[1].facedown).not.toBeNull()
+    expect(g.bfs[1].facedown.length).toBe(1)
     expect(g.players[1].runes.length).toBe(0)
     expect(can(g, 1, 'da nascosta')).toBe(false) // stesso turno
     g.turn++
