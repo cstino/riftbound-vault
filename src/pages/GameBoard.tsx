@@ -40,7 +40,7 @@ function useAiRunner(match: Match | null, version: number, bump: () => void) {
   }, [match, version, bump])
 }
 
-type Sheet = { kind: 'obj'; uid: number } | { kind: 'log' } | { kind: 'trash'; p: PID } | { kind: 'rule'; n: string } | null
+type Sheet = { kind: 'obj'; uid: number } | { kind: 'acts' } | { kind: 'log' } | { kind: 'trash'; p: PID } | { kind: 'rule'; n: string } | null
 
 function Board({ match, version }: { match: Match; version: number }) {
   const g = match.g
@@ -49,9 +49,20 @@ function Board({ match, version }: { match: Match; version: number }) {
   const mine = !!d && match.isHuman(d)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [reviewing, setReviewing] = useState(false)
+  const [picked, setPicked] = useState<number | null>(null)
+  const [peek, setPeek] = useState(false)
   useEffect(() => setReviewing(false), [g])
+  useEffect(() => {
+    setPeek(false)
+    setPicked(null)
+  }, [d])
+  // Il tavolo occupa lo schermo: niente scorrimento della pagina
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.body.classList.add('no-scroll')
+    return () => document.body.classList.remove('no-scroll')
+  }, [])
   void version
-  useEffect(() => window.scrollTo(0, 0), [g])
 
   const answer = (a: Parameters<Match['next']>[0]) => {
     match.next(a)
@@ -61,32 +72,89 @@ function Board({ match, version }: { match: Match; version: number }) {
 
   const actions = mine && d?.type === 'act' ? d.actions : []
   const actionsFor = (uid: number) => actions.filter((a) => a.uid === uid)
+  const end = actions.find((a) => a.kind === 'end' || a.kind === 'pass')
+  const move = actions.find((a) => a.kind === 'move')
+  const modal = mine && d && d.type !== 'act' && g.winner === null ? d : null
+  const openObj = (uid: number) => setSheet({ kind: 'obj', uid })
 
   return (
-    <div className="game">
-      <TopBar g={g} onLog={() => setSheet({ kind: 'log' })} />
-      <PlayerStrip g={g} p={OPP} onTrash={() => setSheet({ kind: 'trash', p: OPP })} onObj={(uid) => setSheet({ kind: 'obj', uid })} />
-      <BaseRow g={g} p={OPP} onObj={(uid) => setSheet({ kind: 'obj', uid })} actionsFor={actionsFor} />
+    <div className="table">
+      <div className="table-corner">
+        <Link to="/impara/partita" className="corner-btn" aria-label="Esci dalla partita">
+          ✕
+        </Link>
+        <button type="button" className="corner-btn" onClick={() => setSheet({ kind: 'log' })}>
+          Cronaca
+        </button>
+      </div>
+      <OppHand n={g.players[OPP].hand.length} />
+      <PlayerStrip g={g} p={OPP} onTrash={() => setSheet({ kind: 'trash', p: OPP })} onObj={openObj} actionsFor={actionsFor} />
+      <BaseRow g={g} p={OPP} onObj={openObj} actionsFor={actionsFor} />
       <div className="bfs">
         {g.bfs.map((b) => (
-          <BattlefieldTile key={b.loc} g={g} loc={b.loc} onObj={(uid) => setSheet({ kind: 'obj', uid })} actionsFor={actionsFor} />
+          <BattlefieldTile key={b.loc} g={g} loc={b.loc} onObj={openObj} actionsFor={actionsFor} />
         ))}
       </div>
-      <BaseRow g={g} p={ME} onObj={(uid) => setSheet({ kind: 'obj', uid })} actionsFor={actionsFor} />
-      <PlayerStrip g={g} p={ME} onTrash={() => setSheet({ kind: 'trash', p: ME })} onObj={(uid) => setSheet({ kind: 'obj', uid })} />
-      <LogTicker g={g} onOpen={() => setSheet({ kind: 'log' })} />
-      <Dock>
-        <ChainBar g={g} />
-        {!(mine && d?.type !== 'act') && <Hand g={g} actionsFor={actionsFor} onObj={(uid) => setSheet({ kind: 'obj', uid })} />}
-        <DecisionPanel g={g} d={d} mine={mine} answer={answer} onObj={(uid) => setSheet({ kind: 'obj', uid })} />
-      </Dock>
+      <BaseRow g={g} p={ME} onObj={openObj} actionsFor={actionsFor} />
+      <PlayerStrip g={g} p={ME} onTrash={() => setSheet({ kind: 'trash', p: ME })} onObj={openObj} actionsFor={actionsFor} />
+      <div className="controls">
+        <Banner g={g} d={d} mine={mine} onLog={() => setSheet({ kind: 'log' })} />
+        <div className="controls-btns">
+          {move && (
+            <button type="button" className="pill pill-move" onClick={() => answer(move.id)}>
+              Muovi
+            </button>
+          )}
+          {actions.length > 1 && (
+            <button type="button" className="pill" onClick={() => setSheet({ kind: 'acts' })}>
+              Azioni {actions.length - 1}
+            </button>
+          )}
+          <EndButton action={end} onClick={() => end && answer(end.id)} waiting={!!d && !mine && g.winner === null} />
+        </div>
+      </div>
+      <ChainBar g={g} />
+      <FanHand g={g} actionsFor={actionsFor} picked={picked} setPicked={setPicked} onDetails={openObj} run={(a) => answer(a.id)} />
+
+      <AnimatePresence>
+        {modal && !peek && (
+          <motion.div key="modal" className="modal-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="modal-scrim" />
+            <motion.div className="modal" initial={{ scale: 0.92, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 30 }}>
+              <button type="button" className="modal-peek" onClick={() => setPeek(true)}>
+                Guarda il tavolo
+              </button>
+              {modal.type === 'choose' ? <ChoosePanel g={g} d={modal} answer={answer} /> : modal.type === 'assign' ? <AssignPanel g={g} d={modal} answer={answer} /> : null}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {modal && peek && (
+        <button type="button" className="peek-back" onClick={() => setPeek(false)}>
+          Torna alla scelta
+        </button>
+      )}
 
       <AnimatePresence>
         {sheet && (
           <SheetFrame key="sheet" onClose={() => setSheet(null)}>
             {sheet.kind === 'obj' && <ObjSheet g={g} uid={sheet.uid} actions={actionsFor(sheet.uid)} run={(a) => answer(a.id)} />}
+            {sheet.kind === 'acts' && (
+              <div className="sheet-body">
+                <h2>Cosa puoi fare adesso</h2>
+                <div className="obj-actions">
+                  {actions
+                    .filter((a) => a !== end)
+                    .map((a) => (
+                      <button key={a.id} type="button" className={`act act-${a.kind}`} onClick={() => answer(a.id)}>
+                        {a.label}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
             {sheet.kind === 'log' && <LogSheet g={g} onRule={(n) => setSheet({ kind: 'rule', n })} />}
-            {sheet.kind === 'trash' && <TrashSheet g={g} p={sheet.p} onObj={(uid) => setSheet({ kind: 'obj', uid })} />}
+            {sheet.kind === 'trash' && <TrashSheet g={g} p={sheet.p} onObj={openObj} />}
             {sheet.kind === 'rule' && (
               <div className="sheet-body">
                 <button type="button" className="link-more" onClick={() => setSheet({ kind: 'log' })}>
@@ -105,32 +173,6 @@ function Board({ match, version }: { match: Match; version: number }) {
 
 // ---------------------------------------------------------------- parti del tavolo
 
-function TopBar({ g, onLog }: { g: Game; onLog: () => void }) {
-  const phase: Record<Game['phase'], string> = {
-    setup: 'Preparazione',
-    awaken: 'Risveglio',
-    beginning: 'Inizio',
-    channel: 'Canalizzazione',
-    draw: 'Pesca',
-    main: 'Fase principale',
-    ending: 'Fine turno',
-    over: 'Partita finita',
-  }
-  return (
-    <div className="game-top">
-      <Link to="/impara/partita" className="link-more">
-        ← Esci
-      </Link>
-      <span className="game-turn">
-        Turno {g.turn} · {g.turnPlayer === ME ? 'tuo' : 'del PC'} · {g.showdown ? (g.showdown.combat ? 'Combattimento' : 'Showdown') : phase[g.phase]}
-      </span>
-      <button type="button" className="link-more" onClick={onLog}>
-        Cronaca
-      </button>
-    </div>
-  )
-}
-
 function Pips({ n, max }: { n: number; max: number }) {
   return (
     <span className="pips" aria-label={`${n} punti su ${max}`}>
@@ -142,20 +184,20 @@ function Pips({ n, max }: { n: number; max: number }) {
   )
 }
 
-function PlayerStrip({ g, p, onTrash, onObj }: { g: Game; p: PID; onTrash: () => void; onObj: (uid: number) => void }) {
+function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; onTrash: () => void; onObj: (uid: number) => void; actionsFor: (uid: number) => ActionOpt[] }) {
   const pl = g.players[p]
   const legend = g.objs.get(pl.legend)!
   const runes = pl.runes.map((u) => g.objs.get(u)!)
   const champ = pl.champion !== null ? g.objs.get(pl.champion) : undefined
   return (
     <div className={`strip strip-${p === ME ? 'me' : 'opp'}${g.turnPlayer === p ? ' strip-turn' : ''}`}>
-      <button type="button" className={`strip-legend${legend.exhausted ? ' is-exhausted' : ''}${legend.empowered ? ' is-empowered' : ''}`} onClick={() => onObj(legend.uid)}>
+      <button type="button" className={`strip-legend${legend.exhausted ? ' is-exhausted' : ''}${legend.empowered ? ' is-empowered' : ''}${actionsFor(legend.uid).length ? ' is-actionable' : ''}`} onClick={() => onObj(legend.uid)}>
         <img src={cardImage(legend.card)} alt={legend.card.name} />
       </button>
       <div className="strip-main">
         <div className="strip-line">
           <strong>{p === ME ? 'Tu' : 'PC'}</strong>
-          <span className="tiny">{pl.deckName}</span>
+          <span className="tiny strip-deck">{pl.deckName}</span>
           <Pips n={pl.points} max={g.victory} />
         </div>
         <div className="strip-line">
@@ -168,13 +210,12 @@ function PlayerStrip({ g, p, onTrash, onObj }: { g: Game; p: PID; onTrash: () =>
             {pl.pool.energy > 0 && <span className="pool">+{pl.pool.energy}</span>}
           </span>
           <span className="strip-counts tiny">
-            {p === OPP && <span>Mano {pl.hand.length}</span>}
             <span>Mazzo {pl.deck.length}</span>
             <button type="button" onClick={onTrash}>
               Trash {pl.trash.length}
             </button>
             {champ && (
-              <button type="button" onClick={() => onObj(champ.uid)}>
+              <button type="button" className={actionsFor(champ.uid).length ? 'champ-ready' : ''} onClick={() => onObj(champ.uid)}>
                 Campione
               </button>
             )}
@@ -282,29 +323,86 @@ function BattlefieldTile({ g, loc, onObj, actionsFor }: { g: Game; loc: LocId; o
   )
 }
 
-function Hand({ g, actionsFor, onObj }: { g: Game; actionsFor: (uid: number) => ActionOpt[]; onObj: (uid: number) => void }) {
-  const pl = g.players[ME]
-  const cards = pl.hand.map((u) => g.objs.get(u)!)
+/** Mano a ventaglio: tocca una carta per sollevarla e vedere cosa puoi farci. */
+function FanHand({
+  g,
+  actionsFor,
+  picked,
+  setPicked,
+  onDetails,
+  run,
+}: {
+  g: Game
+  actionsFor: (uid: number) => ActionOpt[]
+  picked: number | null
+  setPicked: (uid: number | null) => void
+  onDetails: (uid: number) => void
+  run: (a: ActionOpt) => void
+}) {
+  const cards = g.players[ME].hand.map((u) => g.objs.get(u)!)
+  const [width, setWidth] = useState(() => Math.min(window.innerWidth, 760))
+  useEffect(() => {
+    const on = () => setWidth(Math.min(window.innerWidth, 760))
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  const n = cards.length
+  const cardW = 76
+  const step = n > 1 ? Math.min(54, (width - 28 - cardW) / (n - 1)) : 0
+  const spread = Math.min(5, 34 / Math.max(1, n))
+  const sel = picked !== null ? cards.find((o) => o.uid === picked) : undefined
+  const selActs = sel ? actionsFor(sel.uid) : []
   return (
-    <div className="hand" aria-label="La tua mano">
-      <AnimatePresence initial={false}>
-        {cards.map((o, i) => (
-          <motion.button
-            key={o.uid}
-            layout
-            type="button"
-            className={`hand-card${actionsFor(o.uid).length ? ' is-actionable' : ''}`}
-            onClick={() => onObj(o.uid)}
-            initial={{ opacity: 0, y: 60, rotate: 6 }}
-            animate={{ opacity: 1, y: 0, rotate: 0 }}
-            exit={{ opacity: 0, y: -80, scale: 0.7 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 26, delay: Math.min(i, 6) * 0.02 }}
-          >
-            <img src={cardImage(o.card)} alt={o.card.name} />
-          </motion.button>
-        ))}
+    <div className="fan" aria-label="La tua mano">
+      <AnimatePresence>
+        {sel && (
+          <motion.div key="fan-acts" className="fan-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            {selActs.map((a) => (
+              <button key={a.id} type="button" className="btn btn-primary btn-small" onClick={() => run(a)}>
+                {a.label.replace(` ${sel.card.name}`, '')}
+              </button>
+            ))}
+            <button type="button" className="btn btn-small" onClick={() => onDetails(sel.uid)}>
+              Dettagli
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
-      {!cards.length && <span className="tiny board-empty">Mano vuota</span>}
+      {sel && <button type="button" className="fan-scrim" aria-label="Rimetti la carta" onClick={() => setPicked(null)} />}
+      <AnimatePresence initial={false}>
+        {cards.map((o, i) => {
+          const c = i - (n - 1) / 2
+          const up = o.uid === picked
+          return (
+            <motion.button
+              key={o.uid}
+              type="button"
+              className={`fan-card${actionsFor(o.uid).length ? ' is-actionable' : ''}${up ? ' fan-up' : ''}`}
+              style={{ zIndex: up ? 50 : i + 1 }}
+              onClick={() => setPicked(up ? null : o.uid)}
+              initial={{ opacity: 0, y: 160, x: 120, rotate: 20 }}
+              animate={up ? { opacity: 1, x: 0, y: -150, rotate: 0, scale: 1.9 } : { opacity: 1, x: c * step, y: Math.abs(c) * Math.abs(c) * 1.4, rotate: c * spread, scale: 1 }}
+              exit={{ opacity: 0, y: -260, scale: 1.3 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+            >
+              <img src={cardImage(o.card)} alt={o.card.name} />
+            </motion.button>
+          )
+        })}
+      </AnimatePresence>
+      {!n && <span className="tiny board-empty fan-empty">Mano vuota</span>}
+    </div>
+  )
+}
+
+/** Mano dell'avversario: solo il dorso delle carte (128.4). */
+function OppHand({ n }: { n: number }) {
+  return (
+    <div className="opp-hand" aria-label={`Il PC ha ${n} carte in mano`}>
+      {Array.from({ length: n }, (_, i) => {
+        const c = i - (n - 1) / 2
+        return <motion.span key={i} className="card-back" initial={false} animate={{ x: c * 16, rotate: -c * 4, y: Math.abs(c) * Math.abs(c) * 0.8 }} />
+      })}
     </div>
   )
 }
@@ -324,77 +422,59 @@ function ChainBar({ g }: { g: Game }) {
   )
 }
 
-function LogTicker({ g, onOpen }: { g: Game; onOpen: () => void }) {
-  const last = g.log.slice(-2)
+/** Cosa sta succedendo: la richiesta del momento e l'ultima riga della cronaca. */
+function Banner({ g, d, mine, onLog }: { g: Game; d: Decision | null; mine: boolean; onLog: () => void }) {
+  let title = ''
+  if (g.winner !== null) title = 'Partita finita'
+  else if (d && !mine) title = 'Il PC sta giocando…'
+  else if (d?.type === 'act')
+    title =
+      d.context === 'main'
+        ? 'Tocca a te'
+        : d.context === 'chain'
+          ? `Rispondi a ${g.chain[g.chain.length - 1]?.label ?? ''}? Solo Reaction`
+          : `${g.showdown?.combat ? 'Combattimento' : 'Showdown'}: hai il focus (Action o Reaction)`
+  else if (d) title = 'Fai la tua scelta'
+  const last = g.log[g.log.length - 1]
   return (
-    <button type="button" className="ticker" onClick={onOpen}>
-      <AnimatePresence initial={false} mode="popLayout">
-        {last.map((l, i) => (
-          <motion.span key={g.log.length - last.length + i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            {l.text}
-            {l.rule && <small> · {l.rule}</small>}
+    <button type="button" className={`banner${mine ? ' banner-mine' : ''}`} onClick={onLog}>
+      <strong>
+        <small>T{g.turn}</small> {title}
+      </strong>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {last && (
+          <motion.span key={g.log.length} className="tiny" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            {last.text}
+            {last.rule && ` · ${last.rule}`}
           </motion.span>
-        ))}
+        )}
       </AnimatePresence>
     </button>
   )
 }
 
-// ---------------------------------------------------------------- decisioni
-
-function DecisionPanel({ g, d, mine, answer, onObj }: { g: Game; d: Decision | null; mine: boolean; answer: (a: Parameters<Match['next']>[0]) => void; onObj: (uid: number) => void }) {
-  if (!d || g.winner !== null) return null
-  if (!mine) {
-    return (
-      <div className="decide decide-wait">
-        <span className="thinking" aria-hidden>
+/** Il pulsante grande in basso a destra, come nei giochi di carte digitali. */
+function EndButton({ action, onClick, waiting }: { action?: ActionOpt; onClick: () => void; waiting: boolean }) {
+  return (
+    <motion.button
+      type="button"
+      className={`end-btn${action ? ' end-on' : ''}`}
+      disabled={!action}
+      onClick={onClick}
+      whileTap={{ scale: 0.92 }}
+      animate={action ? { boxShadow: ['0 0 0 0 rgb(255 62 165 / 0.7)', '0 0 0 12px rgb(255 62 165 / 0)'] } : {}}
+      transition={{ duration: 1.4, repeat: action ? Infinity : 0 }}
+    >
+      {waiting ? (
+        <span className="thinking" aria-label="Il PC sta giocando">
           <i />
           <i />
           <i />
         </span>
-        Il PC sta giocando…
-      </div>
-    )
-  }
-  if (d.type === 'act') return <ActPanel g={g} d={d} answer={answer} onObj={onObj} />
-  if (d.type === 'choose') return <ChoosePanel g={g} d={d} answer={answer} />
-  return <AssignPanel g={g} d={d} answer={answer} />
-}
-
-function ActPanel({ g, d, answer }: { g: Game; d: Extract<Decision, { type: 'act' }>; answer: (a: string) => void; onObj: (uid: number) => void }) {
-  const end = d.actions.find((a) => a.kind === 'end' || a.kind === 'pass')!
-  const others = d.actions.filter((a) => a !== end)
-  const title =
-    d.context === 'main'
-      ? 'Tocca a te'
-      : d.context === 'chain'
-        ? `Vuoi rispondere a ${g.chain[g.chain.length - 1]?.label ?? ''}?`
-        : `${g.showdown?.combat ? 'Combattimento' : 'Showdown'} a ${g.showdown ? bfName(g, g.showdown.loc) : ''}: hai il focus`
-  const hint =
-    d.context === 'main'
-      ? 'Tocca una carta o un’unità che brilla, oppure scegli qui sotto.'
-      : d.context === 'chain'
-        ? 'Puoi giocare solo carte con Reaction (309.1.a).'
-        : 'Puoi giocare carte con Action o Reaction (308.1.a). Se passate entrambi, lo showdown finisce.'
-  return (
-    <motion.div className="decide" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-      <div className="decide-head">
-        <strong>{title}</strong>
-        <span className="tiny">{hint}</span>
-      </div>
-      {others.length > 0 && (
-        <div className="decide-actions">
-          {others.map((a) => (
-            <button key={a.id} type="button" className={`act act-${a.kind}`} onClick={() => answer(a.id)}>
-              {a.label}
-            </button>
-          ))}
-        </div>
+      ) : (
+        (action?.label ?? '—')
       )}
-      <button type="button" className="btn btn-primary decide-end" onClick={() => answer(end.id)}>
-        {end.label}
-      </button>
-    </motion.div>
+    </motion.button>
   )
 }
 
@@ -614,23 +694,6 @@ function TrashSheet({ g, p, onObj }: { g: Game; p: PID; onObj: (uid: number) => 
           <p className="tiny muted">{ban.map((o) => o.card.name).join(' · ')}</p>
         </>
       )}
-    </div>
-  )
-}
-
-/** Barra in basso con catena, mano e decisione; il tavolo lascia spazio per la sua altezza. */
-function Dock({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--dock-h', `${el.offsetHeight}px`))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return (
-    <div className="dock" ref={ref}>
-      {children}
     </div>
   )
 }
