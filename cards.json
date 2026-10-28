@@ -17368,6 +17368,34 @@
   "image_file": "images/sfd-053-221.webp"
  },
  {
+  "id": "sfd-054-221",
+  "code": "SFD-054/221",
+  "set": "SFD",
+  "set_name": "Spiritforged",
+  "number": "054",
+  "set_size": 221,
+  "name": "Jax, Unmatched",
+  "short_name": "Jax",
+  "type": "Champion Unit",
+  "rarity": "Rare",
+  "domains": [
+   "Calm"
+  ],
+  "energy": 5,
+  "power": 1,
+  "might": 5,
+  "tags": [
+   "Jax",
+   "Icathia"
+  ],
+  "text": "<p>[Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.)<br />Each Equipment in your hand has [Quick-Draw]. (It gains [Reaction]. When you play it, attach it to a unit you control.)</p>",
+  "artist": "Envar Studio",
+  "alt_art": false,
+  "signature": false,
+  "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/3d425589c74dbff818fa09db134fdd8bb7136420-744x1039.png",
+  "image_file": "images/sfd-054-221.webp"
+ },
+ {
   "id": "sfd-054a-221",
   "code": "SFD-054a/221",
   "set": "SFD",

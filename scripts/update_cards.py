@@ -92,8 +92,22 @@ def download_images(cards):
     return len(todo)
 
 
+def merged_cards(fetches=3):
+    # la galleria a volte omette qualche carta: unisce più download e non cancella mai
+    # le carte già presenti in cards.json
+    raw = {}
+    for _ in range(fetches):
+        raw.update({c["id"]: c for c in gallery_cards()})
+    fresh = {c["id"]: c for c in build(list(raw.values()))}
+    if os.path.exists("cards.json"):
+        with open("cards.json") as f:
+            for c in json.load(f):
+                fresh.setdefault(c["id"], c)
+    return sorted(fresh.values(), key=lambda x: (x["set"], x["number"]))
+
+
 if __name__ == "__main__":
-    cards = build(gallery_cards())
+    cards = merged_cards()
     with open("cards.json", "w") as f:
         json.dump(cards, f, ensure_ascii=False, indent=1)
     print(f"{len(cards)} carte, {download_images(cards)} immagini nuove scaricate")
