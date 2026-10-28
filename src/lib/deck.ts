@@ -311,105 +311,35 @@ export function suggestCards(
   return out.sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 40)
 }
 
-/** Mazzo con una copia in meno di una carta (per valutarla senza che pesi sui temi). */
-function without(deck: Deck, id: string): Deck {
-  const main = { ...deck.main }
-  if ((main[id] ?? 0) <= 1) delete main[id]
-  else main[id] -= 1
-  return { ...deck, main }
-}
-
 /**
- * Carte del mazzo ordinate dalla meno alla più legata ai temi (euristica): servono per proporre
- * cosa togliere. Il campione scelto resta sempre con almeno una copia (103.3.a).
+ * Carte del mazzo tra cui scegliere quella da togliere. Solo fatti, nessun giudizio sulla forza:
+ * prima quelle non legali con questa Legend, poi quelle di cui non possiedi abbastanza copie.
+ * Il campione scelto resta sempre con almeno una copia (103.3.a).
  */
-export function removalOrder(deck: Deck, db: CardDb, owned: Record<string, number> = {}): { card: Card; score: number; reasons: string[] }[] {
+export function replaceOptions(deck: Deck, db: CardDb, owned: Record<string, number> = {}): { card: Card; qty: number; notes: string[] }[] {
   const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
   if (!legend) return []
   const tag = legendChampionTag(legend, db)
   const have = ownedNames(db, owned)
   const need = namesIn(deck, db)
-  const out: { card: Card; score: number; reasons: string[] }[] = []
+  const out: { card: Card; qty: number; notes: string[]; rank: number }[] = []
   for (const [id, q] of Object.entries(deck.main)) {
     const c = db.byId.get(id)
     if (!c || (id === deck.championId && q <= 1)) continue
-    const f = fitOf(c, db, { tag, themes: deckThemes(without(deck, id), db), focus: new Set() })
-    const reasons = [...f.reasons]
-    let score = f.score
+    const notes: string[] = []
+    let rank = 2
     if (!legalMain(c, legend.domains, tag)) {
-      score -= 10
-      reasons.unshift('Non è legale con questa Legend')
+      notes.push('Non è legale con questa Legend')
+      rank = 0
+    } else if ((have.get(c.name) ?? 0) < (need.get(c.name) ?? 0)) {
+      notes.push(`Ne possiedi ${have.get(c.name) ?? 0} su ${need.get(c.name)}`)
+      rank = 1
     }
-    if ((have.get(c.name) ?? 0) < (need.get(c.name) ?? 0)) {
-      score -= 1
-      reasons.push('Non ne possiedi abbastanza copie')
-    }
-    if (!f.reasons.length) reasons.push('Non usa i temi del mazzo')
-    out.push({ card: c, score, reasons })
+    out.push({ card: c, qty: id === deck.championId ? q - 1 : q, notes, rank })
   }
-  return out.sort((a, b) => a.score - b.score || (b.card.energy ?? 0) - (a.card.energy ?? 0))
-}
-
-export interface Switch {
-  out: Card
-  in: Card
-  gain: number
-  reasons: string[]
-}
-
-/**
- * Switch suggeriti tra le carte che possiedi (e non sono già tutte nel mazzo) e quelle del mazzo.
- * Euristica: si propone uno scambio solo se la carta che entra è chiaramente più legata ai temi
- * del mazzo di quella che esce. Non misura la forza delle carte.
- */
-export function suggestSwitches(deck: Deck, db: CardDb, owned: Record<string, number>, limit = 6): Switch[] {
-  const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
-  if (!legend) return []
-  const tag = legendChampionTag(legend, db)
-  const inDeck = namesIn(deck, db)
-  const have = ownedNames(db, owned)
-
-  // Carte possedute che potrebbero entrare: una stampa per nome, preferendo quella che hai
-  const cands = new Map<string, Card>()
-  for (const id of Object.keys(owned)) {
-    const c = db.byId.get(id)
-    if (!c || (owned[id] ?? 0) <= 0 || !legalMain(c, legend.domains, tag)) continue
-    if (isChampionUnit(c) && c.id === deck.championId) continue
-    const spare = (have.get(c.name) ?? 0) - (inDeck.get(c.name) ?? 0)
-    if (spare <= 0 || (inDeck.get(c.name) ?? 0) >= (isUnique(c) ? 1 : MAX_COPIES)) continue
-    if (!cands.has(c.name)) cands.set(c.name, c)
-  }
-  if (!cands.size) return []
-
-  const outs = removalOrder(deck, db, owned)
-  const pairs: Switch[] = []
-  for (const o of outs) {
-    const ctx: FitCtx = { tag, themes: deckThemes(without(deck, o.card.id), db), focus: new Set() }
-    for (const c of cands.values()) {
-      if (c.name === o.card.name) continue
-      const f = fitOf(c, db, ctx)
-      let gain = f.score - o.score
-      const reasons = f.reasons.map((r) => `Entra: ${r}`)
-      if (o.reasons.length) reasons.push(`Esce: ${o.reasons[0]}`)
-      if (c.energy != null && c.energy === o.card.energy) {
-        gain += 0.5
-        reasons.push(`Stesso costo (${c.energy} Energia): la curva non cambia`)
-      }
-      if (gain >= 2) pairs.push({ out: o.card, in: c, gain, reasons })
-    }
-  }
-  // Una proposta per carta che esce e per carta che entra, dalle più convenienti
-  const usedOut = new Set<string>()
-  const usedIn = new Set<string>()
-  const picked: Switch[] = []
-  for (const s of pairs.sort((a, b) => b.gain - a.gain)) {
-    if (usedOut.has(s.out.name) || usedIn.has(s.in.name)) continue
-    usedOut.add(s.out.name)
-    usedIn.add(s.in.name)
-    picked.push(s)
-    if (picked.length >= limit) break
-  }
-  return picked
+  return out
+    .sort((a, b) => a.rank - b.rank || (a.card.energy ?? 0) - (b.card.energy ?? 0) || a.card.name.localeCompare(b.card.name))
+    .map(({ card, qty, notes }) => ({ card, qty, notes }))
 }
 
 // ---------------------------------------------------------------------------

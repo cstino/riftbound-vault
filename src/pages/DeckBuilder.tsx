@@ -26,10 +26,8 @@ import {
   isUnique,
   MAX_COPIES,
   presetToDeck,
-  removalOrder,
+  replaceOptions,
   suggestCards,
-  suggestSwitches,
-  type Switch,
   validateDeck,
 } from '../lib/deck'
 import { DomainIcon, EnergyGlyph, MightGlyph } from '../components/Icons'
@@ -143,7 +141,7 @@ export function DeckBuilder() {
               transition={{ duration: 0.2 }}
             >
               {tab === 'mazzo' && <DeckTab deck={deck} edit={edit} requestAdd={requestAdd} />}
-              {tab === 'modifica' && <AddTab deck={deck} edit={edit} requestAdd={requestAdd} />}
+              {tab === 'modifica' && <AddTab deck={deck} requestAdd={requestAdd} />}
               {tab === 'regole' && <RulesTab deck={deck} />}
             </motion.div>
           </AnimatePresence>
@@ -632,7 +630,7 @@ function BattlefieldPicker({ options, owned, onPick }: { options: Card[]; owned:
 
 // ---------------------------------------------------------------------------
 
-function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) => void) => void; requestAdd: (c: Card) => void }) {
+function AddTab({ deck, requestAdd }: { deck: Deck; requestAdd: (c: Card) => void }) {
   const db = useDb()
   const owned = useVault((s) => s.owned)
   const names = useOwnedNames()
@@ -642,7 +640,6 @@ function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) =
   const legend = db.byId.get(deck.legendId!)!
   const themes = useMemo(() => deckThemes(deck, db).slice(0, 10), [deck, db])
   const suggestions = useMemo(() => suggestCards(deck, db, { focus, owned, onlyOwned, limit: 30 }), [deck, db, focus, owned, onlyOwned])
-  const switches = useMemo(() => suggestSwitches(deck, db, owned), [deck, db, owned])
 
   const legal = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -693,15 +690,6 @@ function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) =
         </ul>
       ) : (
         <>
-          <SwitchList
-            switches={switches}
-            onSwap={(s) =>
-              edit((d) => {
-                removeCopy(d, s.out.id)
-                addCopy(d, s.in, db)
-              })
-            }
-          />
           <section className="section">
             <div className="section-head">
               <h2>Suggerite per questo mazzo</h2>
@@ -737,63 +725,6 @@ function AddTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) =
   )
 }
 
-/** Switch suggeriti tra carte possedute e carte del mazzo (euristica, con i motivi). */
-function SwitchList({ switches, onSwap }: { switches: Switch[]; onSwap: (s: Switch) => void }) {
-  const location = useLocation()
-  return (
-    <section className="section">
-      <div className="section-head">
-        <h2>Switch suggeriti</h2>
-        <span className="tiny">{switches.length}</span>
-      </div>
-      <p className="muted picker-help">
-        Tra le carte che possiedi e quelle nel mazzo. Indizi, non regole: confronto solo quanto ogni carta è legata ai temi del mazzo, non quanto è forte.
-      </p>
-      {switches.length === 0 ? (
-        <p className="switch-none">
-          Nessuno switch suggerito: tra le carte che possiedi non ne trovo di chiaramente più legate ai temi del mazzo di quelle che ci sono già. Non vuol dire che il mazzo sia il migliore possibile, solo che questo criterio non trova scambi migliori.
-        </p>
-      ) : (
-        <motion.ul layout className="switches">
-          <AnimatePresence initial={false}>
-            {switches.map((s) => (
-              <motion.li key={`${s.out.id}>${s.in.id}`} layout className="switch" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 20 }}>
-                <div className="switch-cards">
-                  <Link to={`/carta/${s.out.id}`} state={{ background: location }} className="switch-card switch-out">
-                    <img src={cardImage(s.out)} alt="" loading="lazy" />
-                    <span>
-                      <em>Esce</em>
-                      {s.out.name}
-                    </span>
-                  </Link>
-                  <span className="switch-arrow" aria-hidden>
-                    →
-                  </span>
-                  <Link to={`/carta/${s.in.id}`} state={{ background: location }} className="switch-card switch-in">
-                    <img src={cardImage(s.in)} alt="" loading="lazy" />
-                    <span>
-                      <em>Entra</em>
-                      {s.in.name}
-                    </span>
-                  </Link>
-                </div>
-                <ul className="reasons">
-                  {s.reasons.slice(0, 3).map((r) => (
-                    <li key={r}>{r}</li>
-                  ))}
-                </ul>
-                <motion.button type="button" className="btn btn-primary btn-small" onClick={() => onSwap(s)} whileTap={{ scale: 0.95 }}>
-                  Scambia
-                </motion.button>
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </motion.ul>
-      )}
-    </section>
-  )
-}
-
 /** Con il mazzo già a 40 carte: si sceglie subito quale carta togliere per far posto a quella nuova. */
 function ReplaceSheet({
   deck,
@@ -810,7 +741,7 @@ function ReplaceSheet({
 }) {
   const db = useDb()
   const owned = useVault((s) => s.owned)
-  const order = useMemo(() => (card ? removalOrder(deck, db, owned).filter((o) => o.card.name !== card.name) : []), [card, deck, db, owned])
+  const order = useMemo(() => (card ? replaceOptions(deck, db, owned).filter((o) => o.card.name !== card.name) : []), [card, deck, db, owned])
   return (
     <AnimatePresence>
       {card && (
@@ -824,12 +755,12 @@ function ReplaceSheet({
                 <div>
                   <h2>Con cosa la sostituisci?</h2>
                   <p className="muted">
-                    Il mazzo ha già {countOf(deck.main)} carte. Scegli quale togliere per far posto a <strong>{card.name}</strong>. In cima quelle meno legate ai temi del mazzo (indizio, non regola).
+                    Il mazzo ha già {countOf(deck.main)} carte. Scegli quale togliere per far posto a <strong>{card.name}</strong>. In cima quelle non legali o che non possiedi, poi per costo.
                   </p>
                 </div>
               </div>
               <ul className="rows">
-                {order.map((o, i) => (
+                {order.map((o) => (
                   <li key={o.card.id} className="row replace-row">
                     <button type="button" className="replace-pick" onClick={() => onPick(o.card.id)}>
                       <span className="row-art">
@@ -837,12 +768,15 @@ function ReplaceSheet({
                       </span>
                       <span className="row-body">
                         <span className="row-name">
-                          {o.card.name} <span className="tiny">×{deck.main[o.card.id]}</span>
+                          {o.card.name} <span className="tiny">×{o.qty}</span>
                         </span>
                         <span className="row-meta">
                           {o.card.energy != null && <EnergyGlyph value={o.card.energy} />}
-                          {i < 3 && <span className="replace-tip">Suggerita</span>}
-                          <span>{o.reasons[0]}</span>
+                          {o.notes.map((n) => (
+                            <span key={n} className="replace-tip">
+                              {n}
+                            </span>
+                          ))}
                         </span>
                       </span>
                     </button>
