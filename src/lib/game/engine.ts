@@ -62,8 +62,8 @@ export const locName = (g: Game, loc: LocId | null, viewer?: PID) =>
 export const inLoc = (g: Game, loc: LocId | null) =>
   loc == null ? '' : isBf(loc) ? `a ${bfName(g, loc)}` : `nella base di ${g.players[baseOwner(loc)].name}`
 
-export function log(g: Game, text: string, rule?: string, player?: PID) {
-  g.log.push({ turn: g.turn, text, rule, player })
+export function log(g: Game, text: string, rule?: string, player?: PID, card?: Card) {
+  g.log.push({ turn: g.turn, text, rule, player, card })
 }
 
 const pname = (g: Game, p: PID) => g.players[p].name
@@ -1216,6 +1216,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
       `${pname(g, p)} gioca ${perm.card.name}${srcLabel} ${inLoc(g, loc)}${isUnit(perm) && !perm.exhausted ? ', pronta' : ''}.`,
       isUnit(perm) ? (perm.exhausted ? '143.4' : '359.2.c') : '359.2.d',
       p,
+      perm.card,
     )
     applyContested(g, perm)
     if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt })
@@ -1236,7 +1237,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource): Gen<boolean
       flow: src === 'trash',
       resolve: () => (impl.resolve ? impl.resolve(g, ctx) : noop()),
     })
-    log(g, `${pname(g, p)} gioca ${o.card.name}${srcLabel}.`, src === 'trash' ? '829.1.b' : '359.3', p)
+    log(g, `${pname(g, p)} gioca ${o.card.name}${srcLabel}.`, src === 'trash' ? '829.1.b' : '359.3', p, o.card)
   }
   return true
 }
@@ -1353,7 +1354,7 @@ function* activate(g: Game, p: PID, o: Obj, ab: AbilityDef): Gen<boolean> {
     if (!ok) return false
   }
   g.chain.push({ id: chainIds++, controller: p, kind: 'ability', label: `${o.card.name}: ${ab.label}`, resolve: () => ab.resolve(g, ctx) })
-  log(g, `${pname(g, p)} attiva ${o.card.name}: ${ab.label}.`, ab.rule, p)
+  log(g, `${pname(g, p)} attiva ${o.card.name}: ${ab.label}.`, ab.rule, p, o.card)
   return true
 }
 

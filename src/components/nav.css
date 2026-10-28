@@ -28,8 +28,9 @@
   gap: 3px;
   padding: 10px 0 8px;
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   transition: color 200ms;
 }
 
@@ -44,6 +45,8 @@
 
 .nav-label {
   position: relative;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .nav-item.active {
@@ -52,7 +55,7 @@
 
 .nav-active {
   position: absolute;
-  inset: 4px 10px;
+  inset: 4px 3px;
   border-radius: 20px;
   background: radial-gradient(120% 90% at 50% 0%, rgb(255 62 165 / 0.55), rgb(140 91 255 / 0.25) 60%, transparent);
   box-shadow: 0 0 0 1px rgb(255 62 165 / 0.45) inset, 0 8px 24px -6px rgb(255 62 165 / 0.7);

@@ -1523,3 +1523,32 @@ body.no-scroll {
   font-size: 21px;
   line-height: 1.15;
 }
+
+.pc-play {
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  top: 22%;
+  margin: 0 auto;
+  width: min(62%, 240px);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.pc-play img {
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 30px 60px -10px #000, 0 0 40px -6px var(--cyan);
+}
+
+.pc-play span {
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgb(11 6 32 / 0.9);
+  border: 1px solid rgb(59 216 242 / 0.5);
+}

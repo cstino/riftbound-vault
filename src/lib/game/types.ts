@@ -118,6 +118,8 @@ export interface LogEntry {
   text: string
   rule?: string
   player?: PID
+  /** Carta giocata o usata, per mostrarla in grande. */
+  card?: Card
 }
 
 export interface ActionOpt {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { cardImage } from '../lib/data'
 import { useDb } from '../lib/useDb'
 import { useGame } from '../lib/gameStore'
@@ -31,7 +31,9 @@ function useAiRunner(match: Match | null, version: number, bump: () => void) {
   useEffect(() => {
     const d = match?.pending
     if (!match || !d || match.isHuman(d)) return
-    const delay = d.type === 'act' ? 650 : 280
+    // dopo una carta giocata dal PC si aspetta di più, per lasciarla vedere (Spotlight)
+    const last = match.g.log[match.g.log.length - 1]
+    const delay = last?.player === OPP && last.card ? 1700 : d.type === 'act' ? 650 : 280
     const t = setTimeout(() => {
       match.next(match.aiAnswer(d))
       bump()
@@ -166,8 +168,44 @@ function Board({ match, version }: { match: Match; version: number }) {
           </SheetFrame>
         )}
       </AnimatePresence>
+      <Spotlight g={g} />
       {g.winner !== null && !reviewing && <GameOver g={g} onReview={() => setReviewing(true)} />}
     </div>
+  )
+}
+
+/** Mostra in grande ogni carta che il PC gioca o usa, come nei giochi di carte digitali. */
+function Spotlight({ g }: { g: Game }) {
+  const seen = useRef(g.log.length)
+  const [shown, setShown] = useState<{ key: number; entry: Game['log'][number] } | null>(null)
+  const n = g.log.length
+  useEffect(() => {
+    const fresh = g.log.slice(seen.current).map((entry, i) => ({ key: seen.current + i, entry }))
+    seen.current = g.log.length
+    const hit = fresh.filter((x) => x.entry.player === OPP && x.entry.card && !x.entry.card.id.startsWith('token')).pop()
+    if (!hit) return
+    setShown(hit)
+    const t = setTimeout(() => setShown(null), 1800)
+    return () => clearTimeout(t)
+  }, [n, g])
+  return (
+    <AnimatePresence>
+      {shown && (
+        <motion.div
+          key={shown.key}
+          role="button"
+          className="pc-play"
+          onClick={() => setShown(null)}
+          initial={{ opacity: 0, scale: 0.5, y: -120, rotate: -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 40 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+        >
+          <img src={cardImage(shown.entry.card!)} alt={shown.entry.card!.name} />
+          <span>{shown.entry.text}</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -590,6 +628,7 @@ function SheetFrame({ children, onClose }: { children: React.ReactNode; onClose:
 }
 
 function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: ActionOpt[]; run: (a: ActionOpt) => void }) {
+  const location = useLocation()
   const o = g.objs.get(uid)
   if (!o) return <p className="sheet-body muted">Questa carta non è più qui.</p>
   const hiddenFromMe = o.controller !== ME && (o.zone === 'facedown' || o.zone === 'hand')
@@ -638,7 +677,7 @@ function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: Act
           </div>
         )}
         {!o.token && (
-          <Link to={`/carta/${o.card.id}`} className="link-more">
+          <Link to={`/carta/${o.card.id}`} state={{ background: location }} className="link-more">
             Scheda completa →
           </Link>
         )}
