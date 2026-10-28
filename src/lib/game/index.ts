@@ -58,8 +58,8 @@ export class Match {
   private mem: [AiMemory, AiMemory] = [newMemory(), newMemory()]
   private started = false
 
-  constructor(specs: [DeckSpec, DeckSpec], names: [string, string], human: PID | null, seed?: number) {
-    this.g = createGame(specs, names, seed)
+  constructor(specs: [DeckSpec, DeckSpec], names: [string, string], human: PID | null, seed?: number, picks?: [number | null, number | null]) {
+    this.g = createGame(specs, names, seed, picks)
     this.human = human
     this.gen = runGame(this.g)
   }

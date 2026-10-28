@@ -41,6 +41,8 @@ export function PlayVsPc() {
     pc: last?.pc ?? presetDeckId('Shen'),
   }))
   const [open, setOpen] = useState<string | null>(null)
+  // null = a caso come nel Duel (487.5); un numero = campo scelto come nel Match (488.5)
+  const [bf, setBf] = useState<number | null>(() => (last ? last.bf : 0))
 
   const rows = useMemo(
     () =>
@@ -56,15 +58,18 @@ export function PlayVsPc() {
 
   function start() {
     if (!mine || !pc) return
-    const m = new Match([deckToSpec(mine.deck, db), deckToSpec(pc.deck, db)], ['Giocatore', 'PC'], 0)
+    const m = new Match([deckToSpec(mine.deck, db), deckToSpec(pc.deck, db)], ['Giocatore', 'PC'], 0, undefined, bf === null ? [null, null] : [bf, null])
     m.next()
-    startGame(m, { mine: mine.deck.id, pc: pc.deck.id })
+    startGame(m, { mine: mine.deck.id, pc: pc.deck.id, bf })
     navigate('/playground/partita/gioca')
   }
 
   function choose(id: string) {
     setPick((p) => ({ ...p, [side]: id }))
-    if (side === 'mine') setSide('pc')
+    if (side === 'mine') {
+      setSide('pc')
+      if (bf !== null) setBf(0)
+    }
   }
 
   return (
@@ -95,6 +100,42 @@ export function PlayVsPc() {
           VS
         </span>
       </div>
+
+      {mine && (
+        <section className="bf-pick">
+          <div className="bf-pick-head">
+            <strong>Il tuo campo di battaglia</strong>
+            <span className="chips">
+              <button type="button" className="chip" aria-pressed={bf !== null} onClick={() => setBf(bf ?? 0)}>
+                Lo scelgo io
+              </button>
+              <button type="button" className="chip" aria-pressed={bf === null} onClick={() => setBf(null)}>
+                Casuale
+              </button>
+            </span>
+          </div>
+          <p className="tiny">
+            {bf === null
+              ? 'Come nel Duel: ognuno estrae a caso uno dei suoi tre campi (regola 487.5).'
+              : 'Come nel Match: ognuno sceglie uno dei suoi tre campi (regola 488.5). Il PC sceglie il suo.'}
+          </p>
+          {bf !== null && (
+            <div className="bf-options">
+              {mine.deck.battlefields.map((id, i) => {
+                const c = db.byId.get(id)
+                return (
+                  c && (
+                    <button key={id} type="button" className={`bf-option${bf === i ? ' bf-option-on' : ''}`} onClick={() => setBf(i)}>
+                      <img src={cardImage(c)} alt="" loading="lazy" />
+                      <span>{c.name}</span>
+                    </button>
+                  )
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       <p className="setup-help">
         Stai scegliendo: <strong>{side === 'mine' ? 'il tuo mazzo' : 'il mazzo del PC'}</strong>

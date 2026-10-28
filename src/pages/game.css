@@ -1140,7 +1140,7 @@ body.no-scroll {
   margin: 0 auto;
   overflow: hidden;
   display: grid;
-  grid-template-rows: 30px auto auto minmax(0, 1fr) auto auto auto 128px;
+  grid-template-rows: 30px auto minmax(52px, 0.5fr) minmax(150px, 230px) minmax(52px, 0.5fr) auto auto 128px;
   gap: 5px;
   padding: calc(4px + env(safe-area-inset-top)) 8px 0;
   background:
@@ -1526,6 +1526,7 @@ body.no-scroll {
 }
 
 .pc-play {
+  pointer-events: none;
   position: fixed;
   z-index: 50;
   left: 0;
@@ -1560,4 +1561,199 @@ body.no-scroll {
 
 .obj-actions .btn {
   white-space: normal;
+}
+
+.bf-pick {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: rgb(255 255 255 / 0.035);
+  border: 1px solid var(--line);
+}
+
+.bf-pick-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bf-pick-head strong {
+  font-family: var(--font-display);
+}
+
+.bf-pick .chips {
+  display: flex;
+  gap: 6px;
+}
+
+.bf-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bf-option {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  border: 2px solid transparent;
+  background: rgb(255 255 255 / 0.04);
+}
+
+.bf-option img {
+  width: 100%;
+  aspect-ratio: 7 / 5;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.bf-option-on {
+  border-color: var(--magenta);
+  background: rgb(255 62 165 / 0.12);
+}
+
+/* fasce dei giocatori: zone come riquadri a forma di carta */
+.mat {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 6px;
+  border-radius: var(--r-md);
+  background: rgb(255 255 255 / 0.035);
+  border: 1px solid var(--line);
+}
+
+.mat-turn {
+  border-color: rgb(255 62 165 / 0.6);
+  box-shadow: 0 0 24px -12px var(--magenta);
+}
+
+.mat-opp.mat-turn {
+  border-color: rgb(59 216 242 / 0.6);
+  box-shadow: 0 0 24px -12px var(--cyan);
+}
+
+.mat-mid {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  justify-items: start;
+}
+
+.mat-mid .pips {
+  margin-left: 0;
+}
+
+.mat-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mat-line strong {
+  font-family: var(--font-display);
+}
+
+.tile {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 0;
+}
+
+.tile:disabled {
+  cursor: default;
+}
+
+.tile-card {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  aspect-ratio: 5 / 7;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid var(--line-strong);
+}
+
+.tile-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tile-empty {
+  font-size: 8.5px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.tile-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.tile-dim .tile-card img {
+  filter: grayscale(0.8) brightness(0.55);
+}
+
+.tile-glow .tile-card {
+  border-color: var(--warn);
+  box-shadow: 0 0 12px -2px var(--warn);
+}
+
+.tile.is-actionable {
+  animation: none;
+  box-shadow: none;
+}
+
+.tile.is-actionable .tile-card {
+  animation: glow 1.6s ease-in-out infinite;
+}
+
+.tile-back {
+  position: static;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+
+.bf-head {
+  text-align: left;
+}
+
+.bf-head .tiny {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bf-sheet {
+  justify-items: start;
+}
+
+.bf-sheet-img {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 10px;
+}
+
+.table .base {
+  align-content: center;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.02);
 }

@@ -140,7 +140,11 @@ function newObj(g: Game, card: Card, owner: PID, zone: Zone, token = false): Obj
   return o
 }
 
-export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string], seed = Date.now()): Game {
+/**
+ * `picks`: campo scelto da ciascun giocatore (indice tra i suoi tre). Se manca si estrae a caso,
+ * come nel Duel (487.5); se c'è, come nel Match (488.5).
+ */
+export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string], seed = Date.now(), picks: [number | null, number | null] = [null, null]): Game {
   const g: Game = {
     seed,
     rand: mulberry32(seed),
@@ -158,6 +162,7 @@ export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string],
     log: [],
     winner: null,
     victory: 8, // 487.3
+    bfRule: picks.some((x) => x != null) ? '488.5' : '487.5',
   }
   for (const p of [0, 1] as PID[]) {
     const s = specs[p]
@@ -182,8 +187,9 @@ export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string],
       scored: [],
       played: 0,
     }
-    // 487.5: ogni giocatore sceglie a caso uno dei suoi tre campi
-    const bf = s.battlefields[Math.floor(g.rand() * s.battlefields.length)]
+    // 487.5: nel Duel il campo si estrae a caso; 488.5: nel Match lo si sceglie
+    const pick = picks[p]
+    const bf = pick != null && s.battlefields[pick] ? s.battlefields[pick] : s.battlefields[Math.floor(g.rand() * s.battlefields.length)]
     g.bfs.push({ loc: p === 0 ? 'bf0' : 'bf1', card: bf, owner: p, controller: null, contested: null, facedown: null })
   }
   g.first = g.rand() < 0.5 ? 0 : 1 // 115
@@ -1454,7 +1460,7 @@ function* takeTurn(g: Game): Gen {
 }
 
 export function* runGame(g: Game): Gen {
-  log(g, `Campi in gioco: ${g.bfs.map((b) => bfName(g, b.loc)).join(' e ')}. Inizia ${pname(g, g.first)}.`, '487.5')
+  log(g, `Campi in gioco: ${g.bfs.map((b) => bfName(g, b.loc)).join(' e ')}. Inizia ${pname(g, g.first)}.`, g.bfRule)
   // 116-117
   for (const p of [g.first, other(g.first)]) yield* draw(g, p, 4)
   for (const p of [g.first, other(g.first)]) yield* mulligan(g, p)

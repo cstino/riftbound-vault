@@ -184,4 +184,6 @@ export interface Game {
   log: LogEntry[]
   winner: PID | null
   victory: number
+  /** Regola con cui sono stati scelti i campi: a caso (487.5) o scelti (488.5). */
+  bfRule: '487.5' | '488.5'
 }

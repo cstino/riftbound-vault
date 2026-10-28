@@ -42,7 +42,7 @@ function useAiRunner(match: Match | null, version: number, bump: () => void) {
   }, [match, version, bump])
 }
 
-type Sheet = { kind: 'obj'; uid: number } | { kind: 'acts' } | { kind: 'log' } | { kind: 'trash'; p: PID } | { kind: 'rule'; n: string } | null
+type Sheet = { kind: 'obj'; uid: number } | { kind: 'bf'; loc: LocId } | { kind: 'acts' } | { kind: 'log' } | { kind: 'trash'; p: PID } | { kind: 'rule'; n: string } | null
 
 function Board({ match, version }: { match: Match; version: number }) {
   const g = match.g
@@ -94,7 +94,7 @@ function Board({ match, version }: { match: Match; version: number }) {
       <BaseRow g={g} p={OPP} onObj={openObj} actionsFor={actionsFor} />
       <div className="bfs">
         {g.bfs.map((b) => (
-          <BattlefieldTile key={b.loc} g={g} loc={b.loc} onObj={openObj} actionsFor={actionsFor} />
+          <BattlefieldTile key={b.loc} g={g} loc={b.loc} onObj={openObj} onBf={() => setSheet({ kind: 'bf', loc: b.loc })} actionsFor={actionsFor} />
         ))}
       </div>
       <BaseRow g={g} p={ME} onObj={openObj} actionsFor={actionsFor} />
@@ -155,6 +155,7 @@ function Board({ match, version }: { match: Match; version: number }) {
                 </div>
               </div>
             )}
+            {sheet.kind === 'bf' && <BfSheet g={g} loc={sheet.loc} />}
             {sheet.kind === 'log' && <LogSheet g={g} onRule={(n) => setSheet({ kind: 'rule', n })} />}
             {sheet.kind === 'trash' && <TrashSheet g={g} p={sheet.p} onObj={openObj} />}
             {sheet.kind === 'rule' && (
@@ -222,44 +223,51 @@ function Pips({ n, max }: { n: number; max: number }) {
   )
 }
 
+/** Riquadro a forma di carta per le zone del giocatore (Legend, Campione, Mazzo, Trash). */
+function Tile({ label, onClick, actionable, dim, glow, children }: { label: string; onClick?: () => void; actionable?: boolean; dim?: boolean; glow?: boolean; children: React.ReactNode }) {
+  return (
+    <button type="button" className={`tile${actionable ? ' is-actionable' : ''}${dim ? ' tile-dim' : ''}${glow ? ' tile-glow' : ''}`} onClick={onClick} disabled={!onClick}>
+      <span className="tile-card">{children}</span>
+      <span className="tile-label">{label}</span>
+    </button>
+  )
+}
+
 function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; onTrash: () => void; onObj: (uid: number) => void; actionsFor: (uid: number) => ActionOpt[] }) {
   const pl = g.players[p]
   const legend = g.objs.get(pl.legend)!
   const runes = pl.runes.map((u) => g.objs.get(u)!)
   const champ = pl.champion !== null ? g.objs.get(pl.champion) : undefined
+  const top = pl.trash.length ? g.objs.get(pl.trash[pl.trash.length - 1]) : undefined
   return (
-    <div className={`strip strip-${p === ME ? 'me' : 'opp'}${g.turnPlayer === p ? ' strip-turn' : ''}`}>
-      <button type="button" className={`strip-legend${legend.exhausted ? ' is-exhausted' : ''}${legend.empowered ? ' is-empowered' : ''}${actionsFor(legend.uid).length ? ' is-actionable' : ''}`} onClick={() => onObj(legend.uid)}>
+    <div className={`mat mat-${p === ME ? 'me' : 'opp'}${g.turnPlayer === p ? ' mat-turn' : ''}`}>
+      <Tile label="Legend" onClick={() => onObj(legend.uid)} actionable={actionsFor(legend.uid).length > 0} dim={legend.exhausted} glow={legend.empowered}>
         <img src={cardImage(legend.card)} alt={legend.card.name} />
-      </button>
-      <div className="strip-main">
-        <div className="strip-line">
+      </Tile>
+      <Tile label="Campione" onClick={champ ? () => onObj(champ.uid) : undefined} actionable={!!champ && actionsFor(champ.uid).length > 0}>
+        {champ ? <img src={cardImage(champ.card)} alt={champ.card.name} /> : <span className="tile-empty">in gioco</span>}
+      </Tile>
+      <div className="mat-mid">
+        <div className="mat-line">
           <strong>{p === ME ? 'Tu' : 'PC'}</strong>
           <span className="tiny strip-deck">{pl.deckName}</span>
-          <Pips n={pl.points} max={g.victory} />
         </div>
-        <div className="strip-line">
-          <span className="runes" aria-label="Rune">
-            {runes.map((r) => (
-              <span key={r.uid} className={`rune${r.exhausted ? ' rune-off' : ''}`} title={r.card.name}>
-                <DomainIcon domain={r.card.domains[0]} size={14} />
-              </span>
-            ))}
-            {pl.pool.energy > 0 && <span className="pool">+{pl.pool.energy}</span>}
-          </span>
-          <span className="strip-counts tiny">
-            <span>Mazzo {pl.deck.length}</span>
-            <button type="button" onClick={onTrash}>
-              Trash {pl.trash.length}
-            </button>
-            {champ && (
-              <button type="button" className={actionsFor(champ.uid).length ? 'champ-ready' : ''} onClick={() => onObj(champ.uid)}>
-                Campione
-              </button>
-            )}
-          </span>
-        </div>
+        <Pips n={pl.points} max={g.victory} />
+        <span className="runes" aria-label="Rune">
+          {runes.map((r) => (
+            <span key={r.uid} className={`rune${r.exhausted ? ' rune-off' : ''}`} title={r.card.name}>
+              <DomainIcon domain={r.card.domains[0]} size={12} />
+            </span>
+          ))}
+          {pl.pool.energy > 0 && <span className="pool">+{pl.pool.energy}</span>}
+        </span>
       </div>
+      <Tile label={`Mazzo ${pl.deck.length}`}>
+        <span className="card-back tile-back" />
+      </Tile>
+      <Tile label={`Trash ${pl.trash.length}`} onClick={onTrash}>
+        {top ? <img src={cardImage(top.card)} alt={top.card.name} /> : <span className="tile-empty">vuoto</span>}
+      </Tile>
     </div>
   )
 }
@@ -312,7 +320,7 @@ function BaseRow({ g, p, onObj, actionsFor }: { g: Game; p: PID; onObj: (uid: nu
   )
 }
 
-function BattlefieldTile({ g, loc, onObj, actionsFor }: { g: Game; loc: LocId; onObj: (uid: number) => void; actionsFor: (uid: number) => ActionOpt[] }) {
+function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: LocId; onObj: (uid: number) => void; onBf: () => void; actionsFor: (uid: number) => ActionOpt[] }) {
   const bf = g.bfs.find((b) => b.loc === loc)!
   const sd = g.showdown?.loc === loc ? g.showdown : null
   const them = friendlyAt(g, OPP, loc)
@@ -323,10 +331,10 @@ function BattlefieldTile({ g, loc, onObj, actionsFor }: { g: Game; loc: LocId; o
   return (
     <div className={`bf bf-${owner}${sd ? ' bf-live' : ''}`}>
       <img className="bf-art" src={cardImage(bf.card)} alt="" />
-      <div className="bf-head">
+      <button type="button" className="bf-head" onClick={onBf}>
         <strong>{bfName(g, loc)}</strong>
-        <span className="tiny">{bf.controller === null ? 'libero' : bf.controller === ME ? 'tuo' : 'del PC'}</span>
-      </div>
+        <span className="tiny">{bf.controller === null ? 'libero' : bf.controller === ME ? 'tuo' : 'del PC'} · dettagli</span>
+      </button>
       {sd && <span className="bf-live-tag">{sd.combat ? 'Combattimento' : 'Showdown'}</span>}
       <div className="bf-row bf-row-opp">
         <AnimatePresence>
@@ -686,6 +694,37 @@ function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: Act
   )
 }
 
+function BfSheet({ g, loc }: { g: Game; loc: LocId }) {
+  const location = useLocation()
+  const bf = g.bfs.find((b) => b.loc === loc)!
+  const units = unitsAt(g, loc)
+  const who = (p: PID | null) => (p === null ? 'nessuno' : p === ME ? 'tu' : 'il PC')
+  return (
+    <div className="sheet-body bf-sheet">
+      <img className="bf-sheet-img" src={cardImage(bf.card)} alt={bf.card.name} />
+      <h2>{bf.card.name}</h2>
+      <p className="tiny">
+        Portato da {bf.owner === ME ? 'te' : 'il PC'} · controllato da {who(bf.controller)}
+        {g.showdown?.loc === loc ? ` · ${g.showdown.combat ? 'combattimento' : 'showdown'} in corso` : ''}
+      </p>
+      {bf.card.text && (
+        <div className="obj-text">
+          <CardText html={bf.card.text} />
+        </div>
+      )}
+      <p className="tiny">
+        Unità qui: {units.length ? units.map((u) => `${u.card.name} (${u.controller === ME ? 'tua' : 'PC'}, ${might(g, u)})`).join(' · ') : 'nessuna'}
+      </p>
+      <p className="tiny muted">
+        Chi controlla un campo all’inizio del proprio turno lo tiene e guadagna 1 punto (471.2); chi ne prende il controllo lo conquista e guadagna 1 punto (471.1).
+      </p>
+      <Link to={`/carta/${bf.card.id}`} state={{ background: location }} className="link-more">
+        Scheda completa →
+      </Link>
+    </div>
+  )
+}
+
 function LogSheet({ g, onRule }: { g: Game; onRule: (n: string) => void }) {
   const ref = useRef<HTMLOListElement>(null)
   useEffect(() => {
@@ -749,7 +788,7 @@ function GameOver({ g, onReview }: { g: Game; onReview: () => void }) {
     const a = chosen && find(chosen.mine)
     const b = chosen && find(chosen.pc)
     if (!a || !b || !chosen) return navigate('/playground/partita')
-    const m = new Match([deckToSpec(a, db), deckToSpec(b, db)], ['Giocatore', 'PC'], 0)
+    const m = new Match([deckToSpec(a, db), deckToSpec(b, db)], ['Giocatore', 'PC'], 0, undefined, chosen.bf === null ? [null, null] : [chosen.bf, null])
     m.next()
     start(m, chosen)
   }

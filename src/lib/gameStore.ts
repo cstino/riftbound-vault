@@ -5,9 +5,9 @@ import type { Match } from './game'
 interface GameState {
   match: Match | null
   /** Mazzi scelti (id) per la rivincita. */
-  decks: { mine: string; pc: string } | null
+  decks: { mine: string; pc: string; bf: number | null } | null
   version: number
-  start: (m: Match, decks: { mine: string; pc: string }) => void
+  start: (m: Match, decks: { mine: string; pc: string; bf: number | null }) => void
   bump: () => void
   quit: () => void
 }
