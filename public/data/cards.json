@@ -10072,7 +10072,7 @@
   "type": "Unit",
   "rarity": "Common",
   "domains": [
-   "Chaos"
+   "Fury"
   ],
   "energy": 2,
   "power": null,
@@ -10124,7 +10124,7 @@
   "type": "Unit",
   "rarity": "Common",
   "domains": [
-   "Body"
+   "Fury"
   ],
   "energy": 3,
   "power": null,
@@ -10149,7 +10149,7 @@
   "type": "Spell",
   "rarity": "Common",
   "domains": [
-   "Chaos"
+   "Fury"
   ],
   "energy": 3,
   "power": 1,
@@ -10196,9 +10196,11 @@
   "set_size": 167,
   "name": "Scorched Earth",
   "short_name": "Scorched Earth",
-  "type": "",
+  "type": "Spell",
   "rarity": "Common",
-  "domains": [],
+  "domains": [
+   "Fury"
+  ],
   "energy": 4,
   "power": 1,
   "might": null,
@@ -10219,7 +10221,7 @@
   "set_size": 167,
   "name": "Rally for War",
   "short_name": "Rally for War",
-  "type": "Gear",
+  "type": "Spell",
   "rarity": "Common",
   "domains": [
    "Fury"
@@ -10269,9 +10271,11 @@
   "set_size": 167,
   "name": "Antagonistic Apparatus",
   "short_name": "Antagonistic Apparatus",
-  "type": "",
+  "type": "Unit",
   "rarity": "Uncommon",
-  "domains": [],
+  "domains": [
+   "Fury"
+  ],
   "energy": 6,
   "power": 1,
   "might": 3,
@@ -10342,10 +10346,10 @@
   "set_size": 167,
   "name": "Runeblade Anvil",
   "short_name": "Runeblade Anvil",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Uncommon",
   "domains": [
-   "Chaos"
+   "Fury"
   ],
   "energy": 1,
   "power": null,
@@ -10445,10 +10449,10 @@
   "set_size": 167,
   "name": "Coalesced Energy",
   "short_name": "Coalesced Energy",
-  "type": "Spell",
+  "type": "Unit",
   "rarity": "Rare",
   "domains": [
-   "Mind"
+   "Fury"
   ],
   "energy": 4,
   "power": 2,
@@ -10473,7 +10477,7 @@
   "type": "Gear",
   "rarity": "Rare",
   "domains": [
-   "Chaos"
+   "Fury"
   ],
   "energy": 4,
   "power": 1,
@@ -10659,9 +10663,11 @@
   "set_size": 167,
   "name": "Whirling Twirligig",
   "short_name": "Whirling Twirligig",
-  "type": "",
+  "type": "Gear",
   "rarity": "Epic",
-  "domains": [],
+  "domains": [
+   "Fury"
+  ],
   "energy": 4,
   "power": 1,
   "might": null,
@@ -10741,7 +10747,7 @@
   "type": "Gear",
   "rarity": "Common",
   "domains": [
-   "Chaos"
+   "Calm"
   ],
   "energy": 2,
   "power": null,
@@ -10765,7 +10771,7 @@
   "set_size": 167,
   "name": "Consult the Heavens",
   "short_name": "Consult the Heavens",
-  "type": "Unit",
+  "type": "Spell",
   "rarity": "Common",
   "domains": [
    "Calm"
@@ -10790,9 +10796,11 @@
   "set_size": 167,
   "name": "Entrenched Boar",
   "short_name": "Entrenched Boar",
-  "type": "",
+  "type": "Unit",
   "rarity": "Common",
-  "domains": [],
+  "domains": [
+   "Calm"
+  ],
   "energy": 2,
   "power": null,
   "might": 2,
@@ -10963,7 +10971,7 @@
   "set_size": 167,
   "name": "Command: Attack",
   "short_name": "Command: Attack",
-  "type": "Gear",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
    "Calm"
@@ -10988,7 +10996,7 @@
   "set_size": 167,
   "name": "Hunker Down",
   "short_name": "Hunker Down",
-  "type": "",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
    "Calm"
@@ -11013,7 +11021,7 @@
   "set_size": 167,
   "name": "Invigorating Bloom",
   "short_name": "Invigorating Bloom",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Uncommon",
   "domains": [
    "Calm"
@@ -11116,7 +11124,7 @@
   "set_size": 167,
   "name": "Ephemeral Ward",
   "short_name": "Ephemeral Ward",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Rare",
   "domains": [
    "Calm"
@@ -11166,9 +11174,11 @@
   "set_size": 167,
   "name": "Hush",
   "short_name": "Hush",
-  "type": "",
+  "type": "Spell",
   "rarity": "Rare",
-  "domains": [],
+  "domains": [
+   "Calm"
+  ],
   "energy": 1,
   "power": 2,
   "might": null,
@@ -11299,7 +11309,7 @@
   "set_size": 167,
   "name": "Hunting Blind",
   "short_name": "Hunting Blind",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Epic",
   "domains": [
    "Calm"
@@ -11382,7 +11392,7 @@
   "set_size": 167,
   "name": "Resplendent Rostrum",
   "short_name": "Resplendent Rostrum",
-  "type": "Spell",
+  "type": "Gear",
   "rarity": "Epic",
   "domains": [
    "Calm"
@@ -11407,9 +11417,11 @@
   "set_size": 167,
   "name": "Fanfare",
   "short_name": "Fanfare",
-  "type": "",
+  "type": "Spell",
   "rarity": "Common",
-  "domains": [],
+  "domains": [
+   "Mind"
+  ],
   "energy": 3,
   "power": null,
   "might": null,
@@ -11455,9 +11467,11 @@
   "set_size": 167,
   "name": "Industrious Mechsmith",
   "short_name": "Industrious Mechsmith",
-  "type": "",
+  "type": "Unit",
   "rarity": "Common",
-  "domains": [],
+  "domains": [
+   "Mind"
+  ],
   "energy": 4,
   "power": null,
   "might": 1,
@@ -11630,7 +11644,7 @@
   "set_size": 167,
   "name": "Improvised Projectile",
   "short_name": "Improvised Projectile",
-  "type": "Gear",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
    "Mind"
@@ -11705,10 +11719,10 @@
   "set_size": 167,
   "name": "Supernova",
   "short_name": "Supernova",
-  "type": "Unit",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
-   "Order"
+   "Mind"
   ],
   "energy": 9,
   "power": 1,
@@ -11816,7 +11830,7 @@
   "type": "Gear",
   "rarity": "Rare",
   "domains": [
-   "Calm"
+   "Mind"
   ],
   "energy": 5,
   "power": 1,
@@ -11868,7 +11882,7 @@
   "set_size": 167,
   "name": "Scrutinizing Scope",
   "short_name": "Scrutinizing Scope",
-  "type": "Spell",
+  "type": "Gear",
   "rarity": "Rare",
   "domains": [
    "Mind"
@@ -11977,7 +11991,7 @@
   "type": "Unit",
   "rarity": "Epic",
   "domains": [
-   "Fury"
+   "Mind"
   ],
   "energy": 8,
   "power": 2,
@@ -12057,7 +12071,7 @@
   "set_size": 167,
   "name": "Zero Point Inflection",
   "short_name": "Zero Point Inflection",
-  "type": "Spell",
+  "type": "Gear",
   "rarity": "Epic",
   "domains": [
    "Mind"
@@ -12110,7 +12124,7 @@
   "type": "Gear",
   "rarity": "Common",
   "domains": [
-   "Order"
+   "Body"
   ],
   "energy": 1,
   "power": null,
@@ -12132,7 +12146,7 @@
   "set_size": 167,
   "name": "Overloaded Traveler",
   "short_name": "Overloaded Traveler",
-  "type": "Spell",
+  "type": "Unit",
   "rarity": "Common",
   "domains": [
    "Body"
@@ -12160,7 +12174,7 @@
   "type": "Gear",
   "rarity": "Common",
   "domains": [
-   "Calm"
+   "Body"
   ],
   "energy": 1,
   "power": null,
@@ -12362,7 +12376,7 @@
   "type": "Unit",
   "rarity": "Uncommon",
   "domains": [
-   "Fury"
+   "Body"
   ],
   "energy": 6,
   "power": null,
@@ -12543,7 +12557,7 @@
   "set_size": 167,
   "name": "Portable Portal",
   "short_name": "Portable Portal",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Rare",
   "domains": [
    "Body"
@@ -12762,7 +12776,7 @@
   "type": "Unit",
   "rarity": "Common",
   "domains": [
-   "Fury"
+   "Chaos"
   ],
   "energy": 4,
   "power": null,
@@ -12859,7 +12873,7 @@
   "set_size": 167,
   "name": "Siren of the Shallows",
   "short_name": "Siren of the Shallows",
-  "type": "Spell",
+  "type": "Unit",
   "rarity": "Common",
   "domains": [
    "Chaos"
@@ -12959,7 +12973,7 @@
   "set_size": 167,
   "name": "An Offer You Can't Refuse",
   "short_name": "An Offer You Can't Refuse",
-  "type": "Gear",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
    "Chaos"
@@ -12987,7 +13001,7 @@
   "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
-   "Fury"
+   "Chaos"
   ],
   "energy": 3,
   "power": null,
@@ -13034,9 +13048,11 @@
   "set_size": 167,
   "name": "Pitiless Stalker",
   "short_name": "Pitiless Stalker",
-  "type": "",
+  "type": "Unit",
   "rarity": "Uncommon",
-  "domains": [],
+  "domains": [
+   "Chaos"
+  ],
   "energy": 5,
   "power": 1,
   "might": 5,
@@ -13085,7 +13101,7 @@
   "type": "Gear",
   "rarity": "Uncommon",
   "domains": [
-   "Body"
+   "Chaos"
   ],
   "energy": 3,
   "power": 1,
@@ -13134,10 +13150,10 @@
   "set_size": 167,
   "name": "Bushwhack Trap",
   "short_name": "Bushwhack Trap",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Rare",
   "domains": [
-   "Fury"
+   "Chaos"
   ],
   "energy": 1,
   "power": null,
@@ -13247,7 +13263,7 @@
   "type": "Gear",
   "rarity": "Rare",
   "domains": [
-   "Fury"
+   "Chaos"
   ],
   "energy": 4,
   "power": 1,
@@ -13533,7 +13549,7 @@
   "set_size": 167,
   "name": "Meticulous Restorationist",
   "short_name": "Meticulous Restorationist",
-  "type": "Gear",
+  "type": "Unit",
   "rarity": "Common",
   "domains": [
    "Order"
@@ -13560,9 +13576,11 @@
   "set_size": 167,
   "name": "One-Two Punch",
   "short_name": "One-Two Punch",
-  "type": "",
+  "type": "Spell",
   "rarity": "Common",
-  "domains": [],
+  "domains": [
+   "Order"
+  ],
   "energy": 3,
   "power": null,
   "might": null,
@@ -13608,9 +13626,11 @@
   "set_size": 167,
   "name": "Protector's Shield",
   "short_name": "Protector's Shield",
-  "type": "",
+  "type": "Gear",
   "rarity": "Common",
-  "domains": [],
+  "domains": [
+   "Order"
+  ],
   "energy": 2,
   "power": 1,
   "might": 1,
@@ -13631,10 +13651,10 @@
   "set_size": 167,
   "name": "Burn Away",
   "short_name": "Burn Away",
-  "type": "Gear",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
-   "Body"
+   "Order"
   ],
   "energy": 3,
   "power": 1,
@@ -13708,7 +13728,7 @@
   "set_size": 167,
   "name": "Rousing Display",
   "short_name": "Rousing Display",
-  "type": "",
+  "type": "Spell",
   "rarity": "Uncommon",
   "domains": [
    "Order"
@@ -13783,7 +13803,7 @@
   "set_size": 167,
   "name": "Battlefield Armorer",
   "short_name": "Battlefield Armorer",
-  "type": "Spell",
+  "type": "Unit",
   "rarity": "Rare",
   "domains": [
    "Order"
@@ -13808,7 +13828,7 @@
   "set_size": 167,
   "name": "Demacian Illuminators",
   "short_name": "Demacian Illuminators",
-  "type": "Spell",
+  "type": "Unit",
   "rarity": "Rare",
   "domains": [
    "Order"
@@ -13918,9 +13938,11 @@
   "set_size": 167,
   "name": "Raucous Anthem",
   "short_name": "Raucous Anthem",
-  "type": "",
+  "type": "Spell",
   "rarity": "Rare",
-  "domains": [],
+  "domains": [
+   "Order"
+  ],
   "energy": 7,
   "power": 1,
   "might": null,
@@ -13966,7 +13988,7 @@
   "set_size": 167,
   "name": "Dockside Lock-Up",
   "short_name": "Dockside Lock-Up",
-  "type": "Unit",
+  "type": "Gear",
   "rarity": "Epic",
   "domains": [
    "Order"

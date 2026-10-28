@@ -1,6 +1,6 @@
-"""Scarica la galleria ufficiale di Riftbound e rigenera cards.json + images/.
+"""Scarica la galleria ufficiale di Riftbound e rigenera public/data/cards.json + public/images/.
 
-Uso: python3 scripts/update_cards.py   (dalla cartella del progetto)
+Uso: python3 scripts/update_cards.py   (dalla radice del repository)
 Richiede accesso a playriftbound.com e cmsassets.rgpub.io.
 Scarica solo le immagini che mancano.
 """
@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 GALLERY = "https://playriftbound.com/en-us/card-gallery/"
 IMG_PARAMS = "?w=500&fm=webp&q=82"
+PUBLIC = "public"
+CARDS = os.path.join(PUBLIC, "data", "cards.json")
 
 
 def fetch(url):
@@ -56,6 +58,11 @@ def build(raw):
         name = m.group(1) if m and m.group(1).startswith(c["name"]) else c["name"]
         types = [x["label"] for x in c["cardType"]["type"]]
         supertypes = [x["label"] for x in c["cardType"].get("superType") or []]
+        # Nella galleria alcuni tipi di Radiance sono sbagliati o vuoti (es. Burn Away indicata come Gear,
+        # sulla carta è Spell); il testo di accessibilità riporta il tipo stampato.
+        acc_type = re.match(r"Riftbound ([^:,]+):", alt)
+        if acc_type and acc_type.group(1) not in ("None",) and [acc_type.group(1)] != types:
+            types = [acc_type.group(1)]
         tags = c["tags"]["tags"] if c.get("tags") else []
         if "Legend" in types:
             champ = [t for t in tags if t in champions]
@@ -75,16 +82,43 @@ def build(raw):
             alt_art=number.endswith("a"), signature=number.endswith("*"),
             image_url=c["cardImage"]["url"].split("?")[0], image_file=f"images/{c['id']}.webp",
         ))
+    fix_radiance_domains(out)
     out.sort(key=lambda x: (x["set"], x["number"]))
     return out
 
 
+DOMAIN_BLOCKS = ["Fury", "Calm", "Mind", "Body", "Chaos", "Order"]
+
+
+def fix_radiance_domains(cards):
+    """Corregge i domini di Radiance (RAD), sbagliati in molte carte della galleria.
+
+    Come in Vendetta (stessa struttura), le carte 001-138 sono numerate per dominio in blocchi da 23:
+    001-023 Fury, 024-046 Calm, 047-069 Mind, 070-092 Body, 093-115 Chaos, 116-138 Order.
+    Verificato sul colore della fascia del nome nelle immagini e sulle liste ufficiali dei mazzi
+    precostruiti (es. Elnuk Herd, RAD-081, è Body ed è nel mazzo Evelynn Body/Chaos).
+    Alt art e stampe extra prendono il dominio della carta base con lo stesso nome.
+    """
+    base = {}
+    for c in cards:
+        if c["set"] != "RAD" or not re.fullmatch(r"\d{3}", c["number"]):
+            continue
+        n = int(c["number"])
+        if 1 <= n <= 138:
+            c["domains"] = [DOMAIN_BLOCKS[(n - 1) // 23]]
+            base[c["name"]] = c["domains"]
+    for c in cards:
+        main_set = re.fullmatch(r"\d{3}", c["number"]) and int(c["number"]) <= 138
+        if c["set"] == "RAD" and not main_set and c["name"] in base:
+            c["domains"] = base[c["name"]]
+
+
 def download_images(cards):
-    os.makedirs("images", exist_ok=True)
-    todo = [c for c in cards if not os.path.exists(c["image_file"])]
+    os.makedirs(os.path.join(PUBLIC, "images"), exist_ok=True)
+    todo = [c for c in cards if not os.path.exists(os.path.join(PUBLIC, c["image_file"]))]
 
     def get(c):
-        with open(c["image_file"], "wb") as f:
+        with open(os.path.join(PUBLIC, c["image_file"]), "wb") as f:
             f.write(fetch(c["image_url"] + IMG_PARAMS))
 
     with ThreadPoolExecutor(12) as pool:
@@ -99,8 +133,8 @@ def merged_cards(fetches=3):
     for _ in range(fetches):
         raw.update({c["id"]: c for c in gallery_cards()})
     fresh = {c["id"]: c for c in build(list(raw.values()))}
-    if os.path.exists("cards.json"):
-        with open("cards.json") as f:
+    if os.path.exists(CARDS):
+        with open(CARDS) as f:
             for c in json.load(f):
                 fresh.setdefault(c["id"], c)
     return sorted(fresh.values(), key=lambda x: (x["set"], x["number"]))
@@ -108,6 +142,6 @@ def merged_cards(fetches=3):
 
 if __name__ == "__main__":
     cards = merged_cards()
-    with open("cards.json", "w") as f:
+    with open(CARDS, "w") as f:
         json.dump(cards, f, ensure_ascii=False, indent=1)
     print(f"{len(cards)} carte, {download_images(cards)} immagini nuove scaricate")
