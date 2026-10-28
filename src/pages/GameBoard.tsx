@@ -255,6 +255,11 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
         <div className="mat-line">
           <strong>{p === ME ? 'Tu' : 'PC'}</strong>
           <span className="tiny strip-deck">{pl.deckName}</span>
+          {pl.xp > 0 && (
+            <span className="tiny strip-xp" title="XP (728)">
+              {pl.xp} XP
+            </span>
+          )}
         </div>
         <Pips n={pl.points} max={g.victory} />
         <span className="runes" aria-label="Rune">
@@ -267,6 +272,11 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
             </span>
           ))}
           {pl.pool.energy > 0 && <span className="pool">+{pl.pool.energy}</span>}
+          {(pl.pool.any ?? 0) > 0 && (
+            <span className="pool" title="Power di qualsiasi dominio in riserva">
+              +{pl.pool.any} Power
+            </span>
+          )}
         </span>
       </div>
       <Tile label={`Mazzo ${pl.deck.length}`}>

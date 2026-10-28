@@ -175,8 +175,8 @@ register('Zed, Without a Sound', {
         if (!alive(g, ctx.self) || !alive(g, c) || c.controller !== ctx.p) return
         const a = ctx.self.loc!
         const b = c.loc!
-        yield* moveUnits(g, [ctx.self], b, 'abilità di Zed', '421')
-        yield* moveUnits(g, [c], a, 'abilità di Zed', '421')
+        yield* moveUnits(g, [ctx.self], b, 'abilità di Zed', '421', ctx.p)
+        yield* moveUnits(g, [c], a, 'abilità di Zed', '421', ctx.p)
       },
     },
   ],
@@ -275,7 +275,7 @@ function moveSpell(filter: (g: Game, ctx: Ctx, o: Obj) => boolean, title: string
     resolve: function* (g, ctx) {
       const t = ctx.data.t as Obj
       if (!alive(g, t) || !filter(g, ctx, t)) return // 359.3.e.5
-      yield* moveUnits(g, [t], ctx.data.dest as LocId, ctx.self.card.name, '421')
+      yield* moveUnits(g, [t], ctx.data.dest as LocId, ctx.self.card.name, '421', ctx.p)
       after?.(g, ctx, t)
     },
   }
@@ -560,7 +560,7 @@ function moveSpellToMine(): Pick<CardImpl, 'canPlay' | 'prepare' | 'resolve'> {
       const t = ctx.data.t as Obj
       const dest = ctx.data.dest as LocId
       if (!alive(g, t) || t.controller === ctx.p || !friendlyAt(g, ctx.p, dest).length) return
-      yield* moveUnits(g, [t], dest, 'Shadow Dash', '421')
+      yield* moveUnits(g, [t], dest, 'Shadow Dash', '421', ctx.p)
       const mineThere = friendlyAt(g, ctx.p, dest)
       if (mineThere.length === 2) for (const o of mineThere) giveMight(g, o, 1, 'Shadow Dash')
     },
@@ -589,7 +589,7 @@ const kennenStun: TrigDef = {
   },
   resolve: function* (g, ctx) {
     const t = ctx.data.t as Obj
-    if (alive(g, t)) stun(g, t)
+    if (alive(g, t)) stun(g, t, ctx.p)
   },
 }
 
@@ -625,7 +625,7 @@ register('Resonating Strike', {
     const t = ctx.data.t as Obj
     const loc = ctx.data.bf as LocId
     if (!alive(g, t) || t.controller !== ctx.p || bfAt(g, loc).controller !== ctx.p || t.loc === loc) return
-    yield* moveUnits(g, [t], loc, 'Resonating Strike', '421')
+    yield* moveUnits(g, [t], loc, 'Resonating Strike', '421', ctx.p)
     giveMight(g, t, 2, 'Resonating Strike')
   },
   ai: (g, p) => (g.showdown?.combat && g.showdown.defender === p ? 2 : 0),

@@ -33,6 +33,8 @@ export interface Keywords {
   deflect: number
   /** 816: ucciso all'inizio della Beginning Phase del controllore, prima del punteggio. */
   temporary: boolean
+  /** 823: "When I conquer or hold, my controller gains X XP" (i valori si sommano, 823.2). */
+  hunt: number
 }
 
 export interface Static extends Partial<Keywords> {
@@ -76,7 +78,7 @@ export interface AbilityDef {
 export interface CardImpl {
   static?: Static
   /** Costo aggiuntivo opzionale "You may ... as an additional cost" (356.2.b). */
-  optional?: { label: string; energy?: number; discard?: number; killFriendly?: boolean; discountEnergy?: number }
+  optional?: { label: string; energy?: number; power?: Domain[]; discard?: number; killFriendly?: boolean; discountEnergy?: number }
   /** Sconti sul costo (356.4). */
   discount?: (g: Game, p: PID, self: Obj) => { energy?: number; power?: Domain[] }
   flow?: Cost
@@ -135,6 +137,24 @@ export interface CardImpl {
   facedownPlays?: TrigDef
   /** Campi: "plays a unit or gear here" (ctx.data.unit). */
   bfPermPlayed?: TrigDef
+  /** "When an opponent plays a unit" (ctx.data.unit). */
+  enemyPlays?: TrigDef
+  /** "When you stun an enemy unit at a battlefield" (ctx.data.unit). */
+  stunEnemy?: TrigDef
+  /** "When you move an enemy unit" (ctx.data.unit). */
+  enemyMoved?: TrigDef
+  /** "When you hold", di Legend e permanenti (ctx.data.loc). */
+  playerHold?: TrigDef
+  /** Campi: "When a unit here is returned to a player's hand" (controllore = quel giocatore). */
+  bfReturn?: TrigDef
+  /** Campi: abilità date alle unità che sono qui (Gardens of Becoming). */
+  bfUnitAbilities?: AbilityDef[]
+  /** Vex, Cheerless: modifica il costo delle magie mentre è in combattimento. */
+  spellCostInCombat?: boolean
+  /** Abilità ritardata "at the start of your next Main Phase" registrata in PlayerState.atMain (ctx.data.loc). */
+  atMainStart?: TrigDef
+  /** "This enters exhausted" (per i gear). */
+  entersExhausted?: boolean
   /** "When I defend". */
   defend?: TrigDef
   /** "When a unit you control becomes Mighty" (709), di Legend e permanenti (ctx.data.unit). */

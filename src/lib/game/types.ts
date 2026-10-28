@@ -34,6 +34,8 @@ export interface Mod {
   retreat?: boolean
   /** Dura solo fino alla fine del combattimento ("this combat"). */
   combat?: boolean
+  /** "They can't move it this turn". */
+  noMove?: boolean
 }
 
 export interface Obj {
@@ -98,6 +100,12 @@ export interface PlayerState {
   fanfare: number
   /** Last Caress: la prossima unità giocata in questo turno può andare in qualsiasi campo. */
   anyBf: number
+  /** XP del giocatore (728-733). */
+  xp: number
+  /** Nami, Headstrong: la prossima unità giocata in questo turno si prepara e riceve un buff. */
+  namiNext: number
+  /** Abilità ritardate "at the start of your next Main Phase" (Iascylla): campo di destinazione. */
+  atMain: { card: string; loc: LocId }[]
 }
 
 export interface Battlefield {

@@ -13,7 +13,7 @@ const TESTED = new Set(
 // le rune base sono testate a parte con un ciclo
 for (const r of ['Fury Rune', 'Chaos Rune', 'Calm Rune', 'Order Rune', 'Mind Rune', 'Body Rune']) TESTED.add(r)
 
-const PLAYABLE = ['Zed', 'Shen', 'Vi', 'Rumble', 'Seraphine', 'Evelynn', 'Fiora']
+const PLAYABLE = ['Zed', 'Shen', 'Vi', 'Rumble', 'Seraphine', 'Evelynn', 'Fiora', 'Vex']
 
 describe('copertura', () => {
   for (const name of PLAYABLE) {
@@ -46,6 +46,8 @@ describe('copertura', () => {
       accelerate: 'Accelerate',
       disarm: 'Disarm',
       deploy: 'Deploy',
+      temporary: 'Temporary',
+      hunt: 'Hunt',
     }
     for (const [name, impl] of REGISTRY) {
       const c = db.cards.find((x) => x.name === name)

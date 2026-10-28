@@ -125,7 +125,7 @@ register('Vi, Peacekeeper', {
     },
     resolve: function* (g, ctx) {
       const t = ctx.data.t as Obj
-      if (alive(g, t)) stun(g, t)
+      if (alive(g, t)) stun(g, t, ctx.p)
     },
   },
 })
@@ -409,7 +409,7 @@ register('Star Spring', {
     },
     resolve: function* (g, ctx) {
       const t = ctx.data.t as Obj
-      if (alive(g, t)) yield* moveUnits(g, [t], baseOf(t.controller), 'Star Spring', '421')
+      if (alive(g, t)) yield* moveUnits(g, [t], baseOf(t.controller), 'Star Spring', '421', ctx.p)
     },
   },
 })

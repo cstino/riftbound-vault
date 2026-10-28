@@ -1221,6 +1221,15 @@ body.no-scroll {
   white-space: nowrap;
 }
 
+.strip-xp {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 6px;
+  color: var(--magenta);
+  border: 1px solid color-mix(in srgb, var(--magenta) 45%, transparent);
+  font-weight: 700;
+}
+
 .table .rune {
   width: 17px;
   height: 17px;

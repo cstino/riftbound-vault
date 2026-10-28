@@ -1,31 +1,5 @@
 == Fiora (Champion Deck: Fiora) mancano 0
 
-== Vex (Champion Deck: Vex) mancano 27
-1x Vex - Gloomist [Legend/legend] Enull Pnull Mnull ::  When you or an ally hold, you may exhaust me to draw 1. 
-1x Vex, Apathetic [Champion Unit/champion] E4 Pnull M4 ::  [Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.) When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn. (It doesn't deal combat damage this turn.) 
-1x Vex, Cheerless [Champion Unit/champion] E5 P1 M5 ::  While I'm in combat, friendly spells cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and enemy spells cost :rb_energy_1::rb_rune_rainbow: more. 
-2x Vex, Mocking [Champion Unit/champion] E5 P1 M5 ::  [Shield] (+1 :rb_might: while I'm a defender.) [Tank] (I must be assigned combat damage first.) When you [Stun] an enemy unit at a battlefield, you may move me to that battlefield. 
-2x Mutated Mouser [Unit/main] E2 Pnull M1 ::  [Shield 2] (+2 :rb_might: while I'm a defender.) [Tank] (I must be assigned combat damage first.) 
-1x Monch [Unit/main] E6 Pnull M6 ::  If an opponent controls a stunned unit, I cost :rb_energy_2: less and enter ready. 
-2x Existential Dread [Spell/main] E1 P1 Mnull ::  [Action] (Play on your turn or in showdowns.) [Repeat] :rb_energy_2: (You may pay the additional cost to repeat this spell's effect.) [Stun] an attacking enemy unit. If it's already stunned, return it to its owner's hand instead. (A stunned unit doesn't deal combat damage this turn.) 
-2x Allay, Eager Admirer [Unit/main] E3 Pnull M3 ::  [Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.) While I'm at a battlefield, your other units here have [Deflect]. 
-3x Back Off [Spell/main] E3 Pnull Mnull ::  [Hidden] (Hide now for :rb_rune_rainbow: to react with later for :rb_energy_0:.) [Action] (Play on your turn or in showdowns.) [Stun] a unit. (It doesn't deal combat damage this turn.) If you played this from your hand, draw 1. 
-1x Enthusiastic Promoter [Unit/main] E3 Pnull M2 ::  [Backline] (I must be assigned combat damage last.) When I hold, [Buff] all units here. (Give each a +1 :rb_might: buff if it doesn't have one.) 
-2x Trevor Snoozebottom [Unit/main] E3 Pnull M3 ::  [Shield] (+1 :rb_might: while I'm a defender.) When I hold, play a ready 3 :rb_might: Sprite unit token with [Temporary] here. (Kill it at the start of its controller's next Beginning Phase, before scoring.) 
-2x Blast Cone [Gear/main] E4 P1 Mnull ::  When you play this, you may move an enemy unit. When you move an enemy unit, you may exhaust this to [Stun] it. (It doesn't deal combat damage this turn.) 
-1x Megatusk [Unit/main] E6 Pnull M6 ::  Spend 3 XP: Give your units here [Ganking] this turn. (We can move from battlefield to battlefield.) 
-1x Nami, Headstrong [Champion Unit/main] E3 Pnull M3 ::  You may pay :rb_rune_calm: as an additional cost to play me. When you play me, if you paid the additional cost, [Stun] an enemy unit. (It doesn't deal combat damage this turn.) When I hold, the next time you play a unit this turn, ready it and [Buff] it. 
-1x Iascylla [Unit/main] E7 P1 M6 ::  When I hold, at the start of your next Main Phase, you may move an enemy unit to this battlefield. 
-1x Shadow [Signature Unit/main] E3 Pnull M3 ::  If you play me to a battlefield, I enter ready. [Action][&gt;] :rb_energy_1::rb_rune_rainbow:, :rb_exhaust:: [Stun] an enemy unit attacking here. (It doesn't deal combat damage this turn.) 
-1x Scryer's Bloom [Gear/main] E1 Pnull Mnull ::  This enters exhausted. Kill this, :rb_energy_1:, :rb_exhaust:: [Predict 2], then draw 1. Gain 1 XP.  (To Predict 2, look at the top two cards of your Main Deck. Recycle any of them and put the rest back in any order.) 
-2x Soul Sword [Gear/main] E1 Pnull M1 ::  [Equip] :rb_rune_calm: (:rb_rune_calm:: Attach this to a unit you control.) 
-2x Mister Root [Unit/main] E2 Pnull M1 ::  [Accelerate] (You may pay :rb_energy_1::rb_rune_chaos: as an additional cost to have me enter ready.) When I move to a battlefield, gain 2 XP. 
-2x Skyward Strike [Spell/main] E2 P1 Mnull ::  Move an enemy unit. [Level 6][&gt;] [Stun] an enemy unit. (While you have 6+ XP, get the effect. A stunned unit doesn't deal combat damage this turn.) 
-2x Combat Experience [Spell/main] E1 Pnull Mnull ::  [Reaction] (Play any time, even before spells and abilities resolve.) Give a unit +1 :rb_might: this turn. [Level 6][&gt;] Give it +3 :rb_might: this turn instead. (While you have 6+ XP, get the effect.) 
-2x Herald of Spring [Unit/main] E4 P1 M4 ::  [Hunt] (When I conquer or hold, gain 1 XP.) When you play me, gain 2 XP. 
-3x Wuju Apprentice [Unit/main] E2 Pnull M2 ::  [Hunt] (When I conquer or hold, gain 1 XP.) [Level 6][&gt;] When you play me, draw 1. (While you have 6+ XP, get the effect.) 
-2x Mosstomper [Unit/main] E3 P1 M3 ::  [Hunt 2] (When I conquer or hold, gain 2 XP.) [Level 3][&gt;] I have +1 :rb_might: and [Deflect]. (While you have 3+ XP, get the effect. Opponents must pay :rb_rune_rainbow: to choose a [Deflect] unit with a spell or ability.) 
-1x Amateur Recital [Battlefield/battlefield] Enull Pnull Mnull ::  When you hold here, you may move a unit at a battlefield to its base. 
-1x Gardens of Becoming [Battlefield/battlefield] Enull Pnull Mnull ::  Units here have &quot;:rb_exhaust:: Gain 1 XP.&quot; 
-1x Ripper's Bay [Battlefield/battlefield] Enull Pnull Mnull ::  When a unit here is returned to a player's hand, that player may pay :rb_energy_1: to channel 1 rune exhausted. 
+== Vex (Champion Deck: Vex) mancano 0
+
 == Evelynn (Showdown Decks: Seraphine vs Evelynn) mancano 0

@@ -88,7 +88,7 @@ register('Evelynn, Entrancing', {
     },
     resolve: function* (g, ctx) {
       const t = ctx.data.t as Obj
-      if (alive(g, t) && alive(g, ctx.self) && isBf(ctx.self.loc)) yield* moveUnits(g, [t], ctx.self.loc, 'Evelynn, Entrancing', '448')
+      if (alive(g, t) && alive(g, ctx.self) && isBf(ctx.self.loc)) yield* moveUnits(g, [t], ctx.self.loc, 'Evelynn, Entrancing', '448', ctx.p)
     },
   },
 })
@@ -167,7 +167,7 @@ register('Demon Shade', {
     if (ctx.data.mode === 0) {
       if (!open.length) return
       const r = open.length === 1 ? [0] : yield* choose(g, ctx.p, `In quale campo libero sposti ${t.card.name}?`, open.map((b) => ({ label: b.card.name, loc: b.loc })), 1, 1)
-      if (r) yield* moveUnits(g, [t], open[r[0]].loc, 'Demon Shade', '448')
+      if (r) yield* moveUnits(g, [t], open[r[0]].loc, 'Demon Shade', '448', ctx.p)
     } else if (!open.length) {
       addMod(t, { source: 'Demon Shade', ganking: true })
       log(g, `${t.card.name} ottiene Ganking in questo turno.`, undefined, t.controller)
@@ -256,7 +256,7 @@ register('Pitiless Stalker', {
       },
       resolve: function* (g, ctx) {
         const t = ctx.data.t as Obj
-        if (alive(g, t)) stun(g, t)
+        if (alive(g, t)) stun(g, t, ctx.p)
       },
     },
   ],
@@ -344,7 +344,7 @@ register("Siren's Song", {
   },
   resolve: function* (g, ctx) {
     const t = ctx.data.t as Obj
-    if (alive(g, t)) yield* moveUnits(g, [t], ctx.data.dest as import('./types').LocId, "Siren's Song", '448')
+    if (alive(g, t)) yield* moveUnits(g, [t], ctx.data.dest as import('./types').LocId, "Siren's Song", '448', ctx.p)
   },
   ai: (g, p) => (g.showdown?.combat && units(g).some((o) => o.controller !== p && o.moves > 0 && o.loc === g.showdown!.loc) ? 1 : 0),
 })

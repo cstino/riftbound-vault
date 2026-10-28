@@ -192,6 +192,9 @@ export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string],
       played: 0,
       fanfare: 0,
       anyBf: 0,
+      xp: 0,
+      namiNext: 0,
+      atMain: [],
     }
     // 487.5: nel Duel il campo si estrae a caso; 488.5: nel Match lo si sceglie
     const pick = picks[p]
@@ -420,6 +423,11 @@ export function* kill(g: Game, list: Obj[], why: string, rule = '429'): Gen {
 }
 
 export function* returnToHand(g: Game, o: Obj) {
+  if (isUnit(o) && isBf(o.loc)) {
+    const bf = bfAt(g, o.loc)
+    const def = implOf(bf.card.name).bfReturn
+    if (def) queueTrig(g, def, { ...g.objs.get(g.players[o.owner].legend)!, card: bf.card, controller: o.owner }, o.owner, { unit: o })
+  }
   log(g, `${o.card.name} torna nella mano del proprietario.`)
   moveZone(g, o, 'hand')
 }
@@ -443,10 +451,22 @@ export function empower(g: Game, o: Obj) {
   if (def) queueTrig(g, def, o, o.controller)
 }
 
-export function stun(g: Game, o: Obj) {
+export function stun(g: Game, o: Obj, by?: PID) {
   if (o.stunned) return // 424.1.a.1
   o.stunned = true
   log(g, `${o.card.name} è stordita: non infligge danni in combattimento.`, '424.1.b', o.controller)
+  // "When you stun an enemy unit at a battlefield"
+  if (by !== undefined && o.controller !== by && isBf(o.loc))
+    for (const x of [g.objs.get(g.players[by].legend)!, ...board(g).filter((x) => x.controller === by)]) {
+      const def = implOf(x.card.name).stunEnemy
+      if (def) queueTrig(g, def, x, by, { unit: o })
+    }
+}
+
+/** Guadagna XP (730.1). */
+export function gainXp(g: Game, p: PID, n: number, why: string) {
+  g.players[p].xp += n
+  log(g, `${pname(g, p)} guadagna ${n} XP (${why}): ora ne ha ${g.players[p].xp}.`, '730.1', p)
 }
 
 export function addMod(o: Obj, mod: Obj['mods'][number]) {
@@ -484,6 +504,16 @@ export function firePlayed(g: Game, played: Obj, p: PID) {
   }
   // Fanfare: "The next three times you play a unit this turn, draw 1" (abilità ritardata, 391)
   const pl = g.players[p]
+  if (isUnit(played))
+    for (const x of board(g).filter((x) => x.controller !== p)) {
+      const def = implOf(x.card.name).enemyPlays
+      if (def) queueTrig(g, def, x, x.controller, { unit: played })
+    }
+  if (isUnit(played) && pl.namiNext > 0) {
+    // Nami, Headstrong: "the next time you play a unit this turn, ready it and buff it"
+    pl.namiNext = 0
+    queueTrig(g, { label: 'Nami: prepara e buff', resolve: function* (g, ctx) { if (alive(g, ctx.self)) { ctx.self.exhausted = false; buffUnit(g, ctx.self) } } }, played, p)
+  }
   if (isUnit(played) && pl.anyBf > 0) {
     // Last Caress: "The next unit you play this turn ... When you play it, buff it."
     pl.anyBf = 0
@@ -535,6 +565,7 @@ export function kw(g: Game, o: Obj): Keywords {
     ganking: !!s.ganking,
     deflect: s.deflect ?? 0,
     temporary: !!s.temporary || !!o.temporary, // 816.3
+    hunt: s.hunt ?? 0,
   }
   const d: Partial<Keywords> = { ...(impl.keywords?.(g, o) ?? {}) }
   for (const a of auras(g, o)) {
@@ -554,6 +585,7 @@ export function kw(g: Game, o: Obj): Keywords {
   k.ganking ||= !!d.ganking
   k.backline ||= !!d.backline
   k.temporary ||= !!d.temporary
+  k.hunt += d.hunt ?? 0 // 823.2
   for (const m of o.mods) {
     k.assault += m.assault ?? 0
     k.shield += m.shield ?? 0
@@ -757,7 +789,7 @@ function applyContested(g: Game, o: Obj) {
   if (bf.contested === null && bf.controller !== o.controller) bf.contested = o.controller
 }
 
-export function* moveUnits(g: Game, list: Obj[], dest: LocId, how: string, rule = '448'): Gen {
+export function* moveUnits(g: Game, list: Obj[], dest: LocId, how: string, rule = '448', by?: PID): Gen {
   const moved: Obj[] = []
   for (const o of list) {
     if (!alive(g, o) || o.loc === dest) continue
@@ -772,6 +804,12 @@ export function* moveUnits(g: Game, list: Obj[], dest: LocId, how: string, rule 
   for (const o of moved) {
     const def = implOf(o.card.name).move
     if (def) queueTrig(g, def, o, o.controller)
+    // "When you move an enemy unit"
+    if (by !== undefined && o.controller !== by)
+      for (const x of board(g).filter((x) => x.controller === by)) {
+        const d = implOf(x.card.name).enemyMoved
+        if (d) queueTrig(g, d, x, by, { unit: o })
+      }
   }
 }
 
@@ -1234,7 +1272,14 @@ export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold', o
   for (const o of board(g).filter((x) => x.controller === p && x.loc === loc)) {
     const def = how === 'conquer' ? implOf(o.card.name).conquer : implOf(o.card.name).hold
     if (def) queueTrig(g, def, o, p, { open: !!opts.open })
+    const h = isUnit(o) ? kw(g, o).hunt : 0
+    if (h > 0) queueTrig(g, { label: `Hunt ${h}`, resolve: function* (g, ctx) { gainXp(g, ctx.p, h, `Hunt di ${ctx.self.card.name}`) } }, o, p) // 823.1.c.1
   }
+  if (how === 'hold')
+    for (const o of [g.objs.get(g.players[p].legend)!, ...board(g).filter((x) => x.controller === p)]) {
+      const def = implOf(o.card.name).playerHold
+      if (def) queueTrig(g, def, o, p, { loc })
+    }
   const bdef = how === 'conquer' ? implOf(bf.card.name).bfConquer : implOf(bf.card.name).bfHold
   if (bdef) {
     const pseudo: Obj = { ...(g.objs.get(g.players[p].legend) as Obj), card: bf.card, controller: p }
@@ -1263,6 +1308,7 @@ export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ct
   const c = baseCost(o, src)
   const out: Cost = { energy: c.energy, power: [...c.power] }
   if (ctx.paid && impl.optional?.energy) out.energy += impl.optional.energy // 356.2
+  if (ctx.paid && impl.optional?.power) for (const d of impl.optional.power) out.power.push([d])
   if (ctx.paid && impl.optional?.discountEnergy) out.energy = Math.max(0, out.energy - impl.optional.discountEnergy) // 356.4
   if (ctx.accel) {
     // 805.1.b: [1] e una Power di un dominio dell'unità
@@ -1277,6 +1323,17 @@ export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ct
   }
   if (isGear(o) && !o.token && !g.turnFlags.has(`gear-${p}`))
     for (const b of g.bfs) if (b.controller === p) out.energy = Math.max(0, out.energy - (implOf(b.card.name).bfGearDiscount ?? 0)) // Ornn's Forge
+  // Vex, Cheerless: "While I'm in combat, friendly spells cost [1][A] less to a minimum of [1], and enemy spells cost [1][A] more"
+  if (isSpell(o))
+    for (const v of board(g).filter((x) => implOf(x.card.name).spellCostInCombat && x.role !== null)) {
+      if (v.controller === p) {
+        if (out.energy > 1) out.energy -= 1 // 356.4.e: il minimo vale solo per questo sconto
+        if (out.power.length) out.power.pop()
+      } else {
+        out.energy += 1 // 356.3
+        out.power.push(ANY)
+      }
+    }
   const d = impl.discount?.(g, p, o)
   if (d) {
     out.energy = Math.max(0, out.energy - (d.energy ?? 0)) // 356.6
@@ -1330,7 +1387,7 @@ export function unitLocs(g: Game, p: PID, o: Obj, src: PlaySource, w: Window): L
 }
 
 function newCtx(o: Obj, p: PID, src: PlaySource): Ctx {
-  return { self: o, p, hiddenAt: src === 'facedown' ? o.loc : null, paid: false, data: {}, extraPower: 0 }
+  return { self: o, p, hiddenAt: src === 'facedown' ? o.loc : null, paid: false, data: { src }, extraPower: 0 }
 }
 
 function canPlayNow(g: Game, p: PID, o: Obj, src: PlaySource, w: Window) {
@@ -1387,13 +1444,13 @@ export function available(g: Game, p: PID): ActionOpt[] {
   }
   // 144: movimento standard, solo nella fase principale in stato Neutral Open
   if (w === 'main') {
-    const movers = units(g).filter((o) => o.controller === p && !o.exhausted)
+    const movers = units(g).filter((o) => o.controller === p && !o.exhausted && !o.mods.some((m) => m.noMove))
     if (movers.length) acts.push({ id: 'move', label: 'Muovi unità', kind: 'move', run: () => standardMove(g, p) })
   }
   // abilità attivate (376-381)
   const sources = [g.objs.get(pl.legend)!, ...board(g).filter((o) => o.controller === p)]
   for (const o of sources) {
-    for (const ab of abilitiesOf(o)) {
+    for (const ab of abilitiesOf(o, g)) {
       if (!speedOk(ab.speed, w)) continue
       if (ab.speed === 'normal' && g.turnPlayer !== p) continue // 381.1
       if (!ab.can(g, o) || !canPay(g, p, ab.cost(g, o))) continue
@@ -1529,7 +1586,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
     // 337.2 / 359.2: i permanenti si risolvono subito ed entrano sulla board
     const perm = moveZone(g, onChain, 'board', { loc })
     perm.controller = p
-    perm.exhausted = isUnit(perm) && !ctx.accel && !impl.entersReady?.(g, perm) // 143.4, 805.6
+    perm.exhausted = (isUnit(perm) && !ctx.accel && !impl.entersReady?.(g, perm)) || !!impl.entersExhausted // 143.4, 805.6
     log(
       g,
       `${pname(g, p)} gioca ${perm.card.name}${srcLabel} ${inLoc(g, loc)}${isUnit(perm) && !perm.exhausted ? ', pronta' : ''}.`,
@@ -1600,7 +1657,7 @@ function* hideCard(g: Game, p: PID, o: Obj): Gen<boolean> {
 }
 
 function* standardMove(g: Game, p: PID): Gen<boolean> {
-  const movers = units(g).filter((o) => o.controller === p && !o.exhausted)
+  const movers = units(g).filter((o) => o.controller === p && !o.exhausted && !o.mods.some((m) => m.noMove))
   const r = yield* choose(
     g,
     p,
@@ -1638,9 +1695,11 @@ function* standardMove(g: Game, p: PID): Gen<boolean> {
 
 // ---------------------------------------------------------------- abilità attivate
 
-export function abilitiesOf(o: Obj): AbilityDef[] {
+export function abilitiesOf(o: Obj, g?: Game): AbilityDef[] {
   const impl = implOf(o.card.name)
   const out = [...(impl.abilities ?? [])]
+  // abilità date dal campo alle unità che ci sono (Gardens of Becoming)
+  if (g && o.zone === 'board' && isUnit(o) && isBf(o.loc)) out.push(...(implOf(bfAt(g, o.loc).card.name).bfUnitAbilities ?? []))
   if (impl.empower && o.zone === 'board') {
     const e = impl.empower
     out.push({
@@ -1789,6 +1848,7 @@ export function* takeTurn(g: Game): Gen {
     x.played = 0
     x.fanfare = 0
     x.anyBf = 0
+    x.namiNext = 0
   }
   for (const o of g.objs.values()) o.moves = 0
   g.diedThisTurn = 0
@@ -1819,6 +1879,11 @@ export function* takeTurn(g: Game): Gen {
   // 316: Main
   g.phase = 'main'
   emptyPools(g, '316.3')
+  // abilità ritardate "at the start of your next Main Phase"
+  for (const d of pl.atMain.splice(0)) {
+    const def = implOf(d.card).atMainStart
+    if (def) queueTrig(g, def, g.objs.get(pl.legend)!, p, { loc: d.loc })
+  }
   for (;;) {
     yield* settle(g)
     if (g.winner !== null) return
