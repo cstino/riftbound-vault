@@ -14,6 +14,8 @@ import { GlossaryPage } from './pages/GlossaryPage'
 import { AddCards } from './pages/AddCards'
 import { Quiz } from './pages/Quiz'
 import { Training } from './pages/Training'
+import { PlayVsPc } from './pages/PlayVsPc'
+import { GameBoard } from './pages/GameBoard'
 import './app.css'
 
 export default function App() {
@@ -25,7 +27,7 @@ export default function App() {
   const pageLocation = background ?? location
 
   return (
-    <div className="shell">
+    <div className={`shell${pageLocation.pathname === '/impara/partita/gioca' ? ' shell-game' : ''}`}>
       <Nav />
       <main className="main">
         <AnimatePresence mode="wait" initial={false}>
@@ -46,6 +48,8 @@ export default function App() {
               <Route path="/impara/quiz" element={<Quiz />} />
               <Route path="/impara/allenamento" element={<Training />} />
               <Route path="/impara/allenamento/:id" element={<Training />} />
+              <Route path="/impara/partita" element={<PlayVsPc />} />
+              <Route path="/impara/partita/gioca" element={<GameBoard />} />
               <Route path="/impara/guida/:id" element={<LearnChapterPage />} />
               <Route path="/impara/parola/:id" element={<GlossaryPage />} />
               <Route path="*" element={<Home />} />

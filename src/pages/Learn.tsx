@@ -32,12 +32,20 @@ export function Learn() {
         <span className="btn btn-primary btn-small">Inizia</span>
       </Link>
 
+      <Link to="/impara/partita" className="quiz-entry">
+        <span>
+          <strong>Partita contro il PC</strong>
+          <span className="muted">Una partita completa con le regole ufficiali. Scegli il tuo mazzo e quello del PC.</span>
+        </span>
+        <span className="btn btn-primary btn-small">Gioca</span>
+      </Link>
+
       <Link to="/impara/allenamento" className="quiz-entry">
         <span>
           <strong>Allenamento</strong>
           <span className="muted">Combattimenti con carte vere contro il PC: assegni tu i danni, le regole decidono l’esito.</span>
         </span>
-        <span className="btn btn-primary btn-small">Gioca</span>
+        <span className="btn btn-primary btn-small">Prova</span>
       </Link>
 
       <section>
