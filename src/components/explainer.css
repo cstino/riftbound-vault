@@ -1,0 +1,111 @@
+.explainer {
+  display: grid;
+  gap: 12px;
+}
+
+.explainer header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.explainer-chip.kw {
+  font-size: 15px;
+  padding: 3px 12px 4px;
+}
+
+.explainer-kind {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.explainer-short {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.explainer-how {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--text-2);
+}
+
+.explainer-how li::marker {
+  color: var(--magenta);
+}
+
+.explainer-example {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: linear-gradient(160deg, rgb(140 91 255 / 0.18), rgb(255 62 165 / 0.08));
+  border: 1px solid var(--line);
+}
+
+.explainer-example-cards {
+  display: flex;
+  gap: 6px;
+}
+
+.explainer-example-cards img {
+  width: 74px;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px -10px #000;
+  transition: transform 200ms var(--ease-out);
+}
+
+.explainer-example-cards a:hover img {
+  transform: translateY(-3px) rotate(-1.5deg);
+}
+
+.explainer-example-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--magenta);
+  margin-bottom: 4px;
+}
+
+.explainer-rule-toggle {
+  justify-self: start;
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.rule-quote {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--violet);
+  background: rgb(11 6 32 / 0.6);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+
+.rule-block {
+  display: grid;
+  gap: 4px;
+}
+
+.rule-n {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 4px;
+}
+
+.rule-source,
+.rule-loading {
+  color: var(--text-3);
+  font-size: 12px;
+}

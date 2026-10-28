@@ -1,0 +1,57 @@
+.thumb {
+  position: relative;
+  display: block;
+  border-radius: var(--r-card);
+  content-visibility: auto;
+  contain-intrinsic-size: 160px 223px;
+  transition: transform 220ms var(--ease-out), filter 220ms;
+}
+
+.thumb img {
+  width: 100%;
+  aspect-ratio: 500 / 698;
+  object-fit: cover;
+  border-radius: 4.6% / 3.3%;
+  background: var(--ink-2);
+  box-shadow: 0 10px 24px -14px #000, 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+.thumb-land img {
+  aspect-ratio: 500 / 358;
+  border-radius: 3.3% / 4.6%;
+}
+
+.thumb:hover {
+  transform: translateY(-3px);
+}
+
+.thumb:active {
+  transform: scale(0.97);
+}
+
+.thumb-missing img {
+  filter: grayscale(0.85) brightness(0.45);
+}
+
+.thumb-qty {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  min-width: 28px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+  color: #fff;
+  background: var(--magenta);
+  box-shadow: 0 4px 12px -2px rgb(255 62 165 / 0.6);
+}
+
+.thumb-sm .thumb-qty {
+  font-size: 11px;
+  min-width: 22px;
+  right: 4px;
+  bottom: 4px;
+}

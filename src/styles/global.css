@@ -1,0 +1,171 @@
+@import '@fontsource/chakra-petch/500.css';
+@import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/chakra-petch/700.css';
+@import '@fontsource-variable/manrope';
+
+:root {
+  color-scheme: dark;
+
+  --ink-0: #0b0620;
+  --ink-1: #150c33;
+  --ink-2: #22134d;
+  --ink-3: #2f1d66;
+  --line: rgb(176 148 255 / 0.16);
+  --line-strong: rgb(176 148 255 / 0.32);
+  --text: #f4f0ff;
+  --text-2: #b7a9e0;
+  --text-3: #7e70a8;
+  --magenta: #ff3ea5;
+  --magenta-deep: #c4177a;
+  --violet: #8c5bff;
+  --cyan: #3bd8f2;
+  --ok: #4be3a2;
+  --warn: #ffc24b;
+  --danger: #ff5a6e;
+
+  --fury: #d61b23;
+  --calm: #499039;
+  --mind: #0e70a9;
+  --body: #ef7900;
+  --chaos: #673e8d;
+  --order: #d0b115;
+
+  --font-display: 'Chakra Petch', system-ui, sans-serif;
+  --font-body: 'Manrope Variable', system-ui, sans-serif;
+
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-card: 4.6% / 3.3%;
+  --gutter: 16px;
+  --nav-h: 76px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ink-0);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+/* Bagliore ambientale: due sorgenti di luce fisse dietro all'app, come nella reference */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20vmax;
+  z-index: -1;
+  background:
+    radial-gradient(40vmax 40vmax at 15% 10%, rgb(140 91 255 / 0.28), transparent 60%),
+    radial-gradient(36vmax 36vmax at 90% 75%, rgb(255 62 165 / 0.16), transparent 60%),
+    linear-gradient(180deg, var(--ink-1), var(--ink-0) 70%);
+  pointer-events: none;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  font-size: clamp(28px, 7vw, 40px);
+}
+h2 {
+  font-size: 21px;
+}
+h3 {
+  font-size: 17px;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--magenta);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Scroll orizzontale senza barra, con aggancio */
+.rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 4px var(--gutter) 12px;
+  margin: 0 calc(var(--gutter) * -1);
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+.rail > * {
+  scroll-snap-align: start;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

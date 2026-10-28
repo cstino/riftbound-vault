@@ -1,0 +1,45 @@
+.holo-stage {
+  perspective: 900px;
+  width: min(78vw, 340px);
+  margin: 0 auto;
+  touch-action: pan-y;
+}
+
+.holo-land {
+  width: min(92vw, 480px);
+}
+
+.holo-card {
+  position: relative;
+  border-radius: 4.6% / 3.3%;
+  transform-style: preserve-3d;
+  will-change: transform;
+  box-shadow:
+    0 30px 60px -24px rgb(0 0 0 / 0.9),
+    0 0 80px -20px rgb(255 62 165 / 0.45);
+}
+
+.holo-land .holo-card {
+  border-radius: 3.3% / 4.6%;
+}
+
+.holo-card img {
+  width: 100%;
+  border-radius: inherit;
+}
+
+.holo-sheen,
+.holo-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.holo-sheen {
+  mix-blend-mode: color-dodge;
+}
+
+.holo-glare {
+  mix-blend-mode: soft-light;
+}

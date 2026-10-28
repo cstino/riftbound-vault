@@ -1,0 +1,59 @@
+.card-text {
+  display: grid;
+  gap: 10px;
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+.card-text .reminder {
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.kw {
+  display: inline-block;
+  padding: 1px 9px 2px;
+  margin: 0 1px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: normal;
+  font-size: 0.86em;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  vertical-align: 0.06em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--magenta), var(--violet));
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.18) inset, 0 4px 14px -6px var(--magenta);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms;
+}
+
+button.kw:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3) inset, 0 6px 18px -6px var(--magenta);
+}
+
+button.kw:active {
+  transform: scale(0.96);
+}
+
+/* Le parole che danno permessi di tempo hanno un colore proprio, come il "ciano" della reference */
+.kw-action,
+.kw-reaction,
+.kw-ambush,
+.kw-quick-draw {
+  background: linear-gradient(135deg, #1aa6c4, var(--cyan));
+  color: var(--ink-0);
+  box-shadow: 0 4px 14px -6px var(--cyan);
+}
+
+.kw-plain {
+  background: var(--ink-3);
+  box-shadow: none;
+}
+
+.kw-sep {
+  color: var(--magenta);
+  margin: 0 3px;
+  font-size: 0.8em;
+}

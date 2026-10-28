@@ -1,0 +1,42 @@
+.domain-icon,
+.rarity-icon,
+.type-icon {
+  display: inline-block;
+  vertical-align: -0.2em;
+  object-fit: contain;
+}
+
+.type-icon {
+  opacity: 0.85;
+}
+
+.glyph {
+  display: inline-block;
+  vertical-align: -0.15em;
+  margin: 0 0.08em;
+}
+
+.energy-glyph {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25em;
+  height: 1.25em;
+  padding: 0 0.2em;
+  margin: 0 0.1em;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--ink-0);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.82em;
+  vertical-align: 0.05em;
+}
+
+.any-rune {
+  display: inline-block;
+  vertical-align: -0.15em;
+  margin: 0 0.1em;
+  border-radius: 999px;
+  background: conic-gradient(var(--fury), var(--body), var(--order), var(--calm), var(--mind), var(--chaos), var(--fury));
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.7) inset;
+}

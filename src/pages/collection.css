@@ -1,0 +1,41 @@
+.seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid var(--line);
+  flex: none;
+}
+
+.seg button {
+  position: relative;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.seg button[aria-selected='true'] {
+  color: #fff;
+}
+
+.seg button span {
+  position: relative;
+}
+
+.seg-active {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--magenta), var(--violet));
+  box-shadow: 0 6px 18px -6px rgb(255 62 165 / 0.8);
+}
+
+.filters {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 18px;
+}

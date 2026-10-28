@@ -1,0 +1,211 @@
+.shell {
+  min-height: 100dvh;
+}
+
+.main {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: calc(14px + env(safe-area-inset-top)) var(--gutter) calc(var(--nav-h) + 40px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 960px) {
+  .main {
+    padding-left: calc(112px + var(--gutter));
+    padding-bottom: 48px;
+  }
+}
+
+/* Intestazione di pagina */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 18px;
+}
+
+.page-head p {
+  color: var(--text-2);
+  margin-top: 6px;
+}
+
+.section {
+  margin-top: 30px;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-head a,
+.link-more {
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.section-head a:hover,
+.link-more:hover {
+  color: var(--magenta);
+}
+
+/* Pannelli */
+.panel {
+  border-radius: var(--r-lg);
+  background: linear-gradient(160deg, rgb(47 29 102 / 0.75), rgb(21 12 51 / 0.75));
+  border: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+  padding: 18px;
+}
+
+/* Pulsanti */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 15px;
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid var(--line-strong);
+  white-space: nowrap;
+  transition: transform 150ms var(--ease-out), background 150ms;
+}
+
+.btn:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(135deg, var(--magenta), var(--magenta-deep));
+  box-shadow: 0 10px 26px -10px rgb(255 62 165 / 0.8);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #ff5bb3, var(--magenta));
+}
+
+.btn-small {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+
+/* Chip di filtro */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 2px var(--gutter);
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: rgb(255 255 255 / 0.04);
+  border: 1px solid var(--line);
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+
+.chip[aria-pressed='true'] {
+  color: #fff;
+  background: rgb(255 62 165 / 0.18);
+  border-color: var(--magenta);
+}
+
+/* Campo di ricerca */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 6px 0 16px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid var(--line);
+}
+
+.search:focus-within {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 4px rgb(255 62 165 / 0.15);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  font-size: 15px;
+}
+
+.search input::placeholder {
+  color: var(--text-3);
+}
+
+.search-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--magenta);
+  box-shadow: 0 0 16px rgb(255 62 165 / 0.6);
+  flex: none;
+}
+
+/* Griglia di carte */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 12px 10px;
+}
+
+@media (min-width: 700px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 18px 14px;
+  }
+}
+
+.empty {
+  padding: 40px 12px;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.muted {
+  color: var(--text-2);
+}
+
+.tiny {
+  font-size: 12.5px;
+  color: var(--text-3);
+}

@@ -1,0 +1,66 @@
+.deck-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.deck-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: linear-gradient(160deg, rgb(47 29 102 / 0.7), rgb(21 12 51 / 0.7));
+  border: 1px solid var(--line);
+  transition: border-color 200ms, transform 200ms var(--ease-out);
+}
+
+.deck-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.deck-card-art img {
+  width: 96px;
+  border-radius: 7px;
+  box-shadow: 0 12px 24px -12px #000;
+}
+
+.deck-card-placeholder {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  aspect-ratio: 500 / 698;
+  border-radius: 7px;
+  border: 1px dashed var(--line-strong);
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-size: 28px;
+}
+
+.deck-card-body {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.deck-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.deck-card-domains {
+  display: flex;
+  gap: 6px;
+  min-height: 22px;
+}
+
+.deck-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}

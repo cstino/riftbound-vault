@@ -1,0 +1,76 @@
+.cover {
+  position: relative;
+  margin: 0 calc(var(--gutter) * -1);
+  overflow: hidden;
+  padding: 10px 0 0;
+}
+
+.cover-track {
+  position: relative;
+  height: min(98vw, 430px);
+  perspective: 1100px;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.cover-card {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: min(62vw, 270px);
+  margin-left: calc(min(62vw, 270px) / -2);
+  border-radius: 4.6% / 3.3%;
+  transform-style: preserve-3d;
+}
+
+.cover-card img {
+  width: 100%;
+  border-radius: inherit;
+  box-shadow: 0 24px 50px -20px #000;
+  pointer-events: none;
+}
+
+.cover-glow {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px rgb(255 62 165 / 0.7), 0 0 60px -6px rgb(255 62 165 / 0.65);
+  pointer-events: none;
+}
+
+.cover-meta {
+  text-align: center;
+  padding: 14px var(--gutter) 0;
+}
+
+.cover-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.cover-caption {
+  color: var(--text-2);
+  font-size: 13.5px;
+  margin-top: 2px;
+}
+
+.cover-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.cover-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: width 250ms var(--ease-out), background 250ms;
+}
+
+.cover-dots span.on {
+  width: 22px;
+  background: var(--magenta);
+}

@@ -149,7 +149,8 @@ export function keywordsOf(c: Card): string[] {
   const out = new Set<string>()
   for (const m of (c.text ?? '').matchAll(/\[([^\]]+)\]/g)) {
     const id = glossaryIdForTerm(m[1])
-    if (id) out.add(id)
+    // Empowered dipende da Empower: per i temi del mazzo contano come una cosa sola
+    if (id) out.add(id === 'empowered' ? 'empower' : id)
   }
   return [...out]
 }
