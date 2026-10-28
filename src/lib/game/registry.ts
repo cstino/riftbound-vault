@@ -18,9 +18,13 @@ export interface Ctx {
   accel?: boolean
   /** Ha pagato Repeat (820): l'effetto si esegue due volte. */
   repeat?: boolean
+  /** Sconto in energia da costi aggiuntivi pagati (356.4). */
+  discount?: number
 }
 
 export interface Keywords {
+  /** 831: "When I attack, give an enemy unit here -X Might this turn". */
+  disarm: number
   assault: number
   shield: number
   tank: boolean
@@ -34,6 +38,8 @@ export interface Static extends Partial<Keywords> {
   reaction?: boolean
   /** 805: "As you play me, you may pay [1][C]. If you do, I enter ready." */
   accelerate?: boolean
+  /** 830: si gioca solo in un campo, anche nemico; non viene richiamato. */
+  deploy?: boolean
   ambush?: boolean
   hidden?: boolean
 }
@@ -68,7 +74,7 @@ export interface AbilityDef {
 export interface CardImpl {
   static?: Static
   /** Costo aggiuntivo opzionale "You may ... as an additional cost" (356.2.b). */
-  optional?: { label: string; energy?: number; discard?: number }
+  optional?: { label: string; energy?: number; discard?: number; killFriendly?: boolean; discountEnergy?: number }
   /** Sconti sul costo (356.4). */
   discount?: (g: Game, p: PID, self: Obj) => { energy?: number; power?: Domain[] }
   flow?: Cost
@@ -100,6 +106,16 @@ export interface CardImpl {
   equipCost?: (g: Game, self: Obj, unit: Obj | null) => Cost
   /** Legend di Zed: "When you banish a card you own". */
   banishOwn?: TrigDef
+  /** "When I become exhausted". */
+  exhausted?: TrigDef
+  /** "When you exhaust three or more friendly units at the same time" (ctx.data.count). */
+  exhaustMany?: TrigDef
+  /** 832 Show Off: cosa si può mostrare mentre si gioca la carta. */
+  showOff?: { label: string; filter: (g: Game, o: Obj) => boolean }
+  /** Costo aggiuntivo opzionale offerto da una Legend o un permanente per le magie (Seraphine). */
+  spellCostOption?: { label: string; energy: number; can: (g: Game, self: Obj) => boolean; pay: (g: Game, self: Obj) => Gen<boolean> }
+  /** Abilità che si attiva da trash quando giochi una carta (Meticulous Restorationist). */
+  trashPlays?: TrigDef
   /** "When an opponent plays a gear". */
   opponentGear?: (g: Game, self: Obj, gear: Obj) => Trigger | null
   might?: (g: Game, self: Obj) => number
@@ -107,6 +123,8 @@ export interface CardImpl {
   aura?: (g: Game, self: Obj, target: Obj) => (Partial<Keywords> & { might?: number }) | null
   /** "When you play a unit/card": ctx.data.unit è l'oggetto giocato (anche token). */
   allyPlays?: TrigDef
+  /** Campi: "the first time ... a non-token unit they control dies here" (ctx.data.unit). */
+  bfUnitDies?: TrigDef
   /** Campi: "When you defend here". */
   bfDefend?: TrigDef
   keywords?: (g: Game, self: Obj) => Partial<Keywords>

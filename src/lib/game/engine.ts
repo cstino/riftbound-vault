@@ -190,6 +190,7 @@ export function createGame(specs: [DeckSpec, DeckSpec], names: [string, string],
       points: 0,
       scored: [],
       played: 0,
+      fanfare: 0,
     }
     // 487.5: nel Duel il campo si estrae a caso; 488.5: nel Match lo si sceglie
     const pick = picks[p]
@@ -397,6 +398,11 @@ export function* kill(g: Game, list: Obj[], why: string, rule = '429'): Gen {
   list = list.filter((o) => !saved.includes(o))
   if (!list.length) return
   g.diedThisTurn += list.filter(isUnit).length
+  for (const o of list) {
+    if (!isUnit(o) || o.token || !isBf(o.loc)) continue
+    const def = implOf(bfAt(g, o.loc).card.name).bfUnitDies
+    if (def) queueTrig(g, def, { ...o, card: bfAt(g, o.loc).card }, o.controller, { unit: { ...o } })
+  }
   // 808.1.d.2: i Deathknell vanno in attesa prima che la carta lasci la board
   for (const o of list) {
     const def = implOf(o.card.name).deathknell
@@ -445,6 +451,12 @@ export function addMod(o: Obj, mod: Obj['mods'][number]) {
 
 /** Gioca un token (180-187): le unità entrano esauste (143.4), salvo indicazione contraria (184.1). */
 export function* playToken(g: Game, p: PID, card: Card, loc: LocId, opts: { ready?: boolean; exhausted?: boolean } = {}): Gen<Obj> {
+  // Heimerdinger, Academy Instructor: sostituzione "you may play a 3 Might Mech unit token ... instead" (369)
+  const heimer = board(g).some((h) => h.controller === p && h.card.name === 'Heimerdinger, Academy Instructor' && isBf(h.loc))
+  if (heimer && /Unit/.test(card.type) && card.name !== 'Mech') {
+    const yes = yield* yesNo(g, p, `Heimerdinger: giochi un token Mech da 3 invece di ${card.name}?`, true, { rule: '369' })
+    if (yes) card = tokenCard('Mech', 3, ['Mech'], '')
+  }
   const o = newObj(g, card, p, 'board', true)
   o.loc = loc
   o.exhausted = opts.exhausted ?? (/Unit/.test(card.type) && !opts.ready)
@@ -460,6 +472,17 @@ export function firePlayed(g: Game, played: Obj, p: PID) {
   for (const o of [g.objs.get(g.players[p].legend)!, ...board(g).filter((x) => x.controller === p)]) {
     const def = implOf(o.card.name).allyPlays
     if (def) queueTrig(g, def, o, p, { unit: played })
+  }
+  for (const uid of g.players[p].trash) {
+    const o = g.objs.get(uid)!
+    const def = implOf(o.card.name).trashPlays
+    if (def) queueTrig(g, def, o, p, { unit: played })
+  }
+  // Fanfare: "The next three times you play a unit this turn, draw 1" (abilità ritardata, 391)
+  const pl = g.players[p]
+  if (isUnit(played) && pl.fanfare > 0) {
+    pl.fanfare--
+    queueTrig(g, { label: 'Fanfare: pesca 1', resolve: function* (g, ctx) { yield* draw(g, ctx.p, 1) } }, played, p)
   }
 }
 
@@ -495,6 +518,7 @@ export function kw(g: Game, o: Obj): Keywords {
   const impl = implOf(o.card.name)
   const s = impl.static ?? {}
   const k: Keywords = {
+    disarm: s.disarm ?? 0,
     assault: s.assault ?? 0,
     shield: s.shield ?? 0,
     tank: !!s.tank,
@@ -505,12 +529,14 @@ export function kw(g: Game, o: Obj): Keywords {
   const d: Partial<Keywords> = { ...(impl.keywords?.(g, o) ?? {}) }
   for (const a of auras(g, o)) {
     d.assault = (d.assault ?? 0) + (a.assault ?? 0)
+    d.disarm = (d.disarm ?? 0) + (a.disarm ?? 0)
     d.shield = (d.shield ?? 0) + (a.shield ?? 0)
     d.deflect = (d.deflect ?? 0) + (a.deflect ?? 0)
     d.tank ||= a.tank
     d.ganking ||= a.ganking
     d.backline ||= a.backline
   }
+  k.disarm += d.disarm ?? 0 // 831.2
   k.assault += d.assault ?? 0 // 807.2: i valori si sommano
   k.shield += d.shield ?? 0 // 814.2
   k.deflect += d.deflect ?? 0 // 809.2
@@ -811,8 +837,10 @@ function* priorityRound(g: Game): Gen {
   if (item.card) {
     const c = g.objs.get(item.card)
     if (c && c.zone === 'chain') {
+      const snap = { ...c }
       if (item.flow) yield* banish(g, c, item.controller) // 829.1.b.1
       else moveZone(g, c, 'trash') // 359.3.d
+      firePlayed(g, snap, item.controller) // 420.4.a: giocata quando si risolve
     }
   }
 }
@@ -889,7 +917,7 @@ export function* cleanup(g: Game): Gen {
     }
     // 323.6: richiamo dell'equipaggiamento non attaccato; via le carte nascoste in campi non controllati
     for (const o of board(g)) {
-      if (isGear(o) && isBf(o.loc) && o.attachedTo === null) {
+      if (isGear(o) && isBf(o.loc) && o.attachedTo === null && !implOf(o.card.name).static?.deploy) {
         recall(g, o, '323.6')
         changed = true
       }
@@ -936,6 +964,46 @@ export function* cleanup(g: Game): Gen {
 function fireRoleTrigger(g: Game, o: Obj) {
   const def = o.role === 'attacker' ? implOf(o.card.name).attack : undefined
   if (def) queueTrig(g, def, o, o.controller) // 383.4.e
+  const x = o.role === 'attacker' ? kw(g, o).disarm : 0
+  if (x > 0) queueTrig(g, disarmTrig(x), o, o.controller) // 831.1.d.1: un solo trigger col valore totale
+}
+
+/** 831.1.d: "When I attack, give an enemy unit here -X Might this turn". */
+const disarmTrig = (x: number): TrigDef => ({
+  label: `Disarm ${x}`,
+  prepare: function* (g, ctx) {
+    const t = yield* chooseUnit(g, ctx, `Disarm ${x}: quale unità nemica qui ottiene -${x} Might?`, (u) => u.controller !== ctx.p && u.loc === ctx.self.loc, (u) => might(g, u))
+    if (!t) return false
+    if (ctx.extraPower) pay(g, ctx.p, { energy: 0, power: Array(ctx.extraPower).fill(ANY) })
+    ctx.data.t = t
+    return true
+  },
+  resolve: function* (g, ctx) {
+    const t = ctx.data.t as Obj
+    if (!alive(g, t)) return
+    addMod(t, { source: 'Disarm', might: -x })
+    log(g, `${t.card.name} ottiene -${x} Might in questo turno (Disarm).`, '831.1.d', ctx.p)
+  },
+})
+
+/**
+ * Esaurisce delle unità (415) e fa scattare "When I become exhausted" e
+ * "When you exhaust three or more friendly units at the same time".
+ */
+export function exhaustUnits(g: Game, list: Obj[], by: PID) {
+  const done = list.filter((o) => !o.exhausted)
+  for (const o of done) o.exhausted = true
+  for (const o of done) {
+    const def = implOf(o.card.name).exhausted
+    if (def) queueTrig(g, def, o, o.controller)
+  }
+  const mine = done.filter((o) => o.controller === by && isUnit(o)).length
+  if (mine >= 3) {
+    for (const src of [g.objs.get(g.players[by].legend)!, ...board(g).filter((x) => x.controller === by)]) {
+      const def = implOf(src.card.name).exhaustMany
+      if (def) queueTrig(g, def, src, by, { count: mine })
+    }
+  }
 }
 
 // ---------------------------------------------------------------- showdown e combattimento
@@ -1113,8 +1181,12 @@ export function* scoreBf(g: Game, p: PID, loc: LocId, how: 'conquer' | 'hold'): 
   const bf = bfAt(g, loc)
   if (pl.scored.includes(loc)) return // 472
   pl.scored.push(loc)
-  if (how === 'hold') gainPoints(g, p, 1, '471.2', `tiene ${bfName(g, bf.loc)}`)
-  else if (pl.points >= g.victory - 1 && pl.scored.length < g.bfs.length) {
+  if (how === 'hold') {
+    gainPoints(g, p, 1, '471.2', `tiene ${bfName(g, bf.loc)}`)
+    // 830.1.b: "When an opponent holds here, kill this"
+    const dead = board(g).filter((o) => o.loc === loc && o.controller !== p && implOf(o.card.name).static?.deploy && !isUnit(o))
+    if (dead.length) yield* kill(g, dead, 'Deploy: l’avversario tiene il campo', '830.1.b')
+  } else if (pl.points >= g.victory - 1 && pl.scored.length < g.bfs.length) {
     log(g, `Sarebbe il punto finale, ma ${pname(g, p)} non ha segnato su tutti i campi in questo turno: pesca 1 invece.`, '473.1.b.1', p)
     yield* draw(g, p, 1)
   } else gainPoints(g, p, 1, how === 'conquer' ? '471.1' : '471.2', `conquista ${bfName(g, bf.loc)}`)
@@ -1146,17 +1218,19 @@ export function baseCost(o: Obj, src: PlaySource): Cost {
   return { energy: o.card.energy ?? 0, power: Array(o.card.power ?? 0).fill(domains.length ? domains : ANY) }
 }
 
-export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ctx, 'paid' | 'extraPower' | 'accel' | 'repeat'>): Cost {
+export function totalCost(g: Game, p: PID, o: Obj, src: PlaySource, ctx: Pick<Ctx, 'paid' | 'extraPower' | 'accel' | 'repeat' | 'discount'>): Cost {
   const impl = implOf(o.card.name)
   const c = baseCost(o, src)
   const out: Cost = { energy: c.energy, power: [...c.power] }
   if (ctx.paid && impl.optional?.energy) out.energy += impl.optional.energy // 356.2
+  if (ctx.paid && impl.optional?.discountEnergy) out.energy = Math.max(0, out.energy - impl.optional.discountEnergy) // 356.4
   if (ctx.accel) {
     // 805.1.b: [1] e una Power di un dominio dell'unità
     const doms = o.card.domains.filter((d) => (DOMAINS as string[]).includes(d))
     out.energy += 1
     out.power.push(doms.length ? doms : ANY)
   }
+  if (ctx.discount) out.energy = Math.max(0, out.energy - ctx.discount) // 356.4
   if (ctx.repeat && impl.repeat) {
     out.energy += impl.repeat.energy ?? 0 // 820.1.c.1
     for (let i = 0; i < (impl.repeat.power ?? 0); i++) out.power.push(ANY)
@@ -1219,7 +1293,17 @@ function canPlayNow(g: Game, p: PID, o: Obj, src: PlaySource, w: Window) {
   if (src === 'trash' && !impl.flow) return false
   if (src === 'facedown' && o.hiddenTurn >= g.turn) return false // 811.1.b: dal turno successivo
   const ctx = newCtx(o, p, src)
-  if (!canPay(g, p, totalCost(g, p, o, src, ctx))) return false
+  if (isSpell(o)) {
+    // sconti disponibili da costi aggiuntivi di altri oggetti (es. Legend di Seraphine)
+    for (const x of [g.objs.get(g.players[p].legend)!, ...board(g).filter((b) => b.controller === p)]) {
+      const opt = implOf(x.card.name).spellCostOption
+      if (opt?.can(g, x)) ctx.discount = (ctx.discount ?? 0) + opt.energy
+    }
+  }
+  // 356: anche un costo aggiuntivo facoltativo può rendere la carta giocabile (es. Dune Devourer)
+  const opt = impl.optional
+  const optOk = !!opt && (!opt.killFriendly || units(g).some((x) => x.controller === p)) && (!opt.discard || g.players[p].hand.length > opt.discard)
+  if (!canPay(g, p, totalCost(g, p, o, src, ctx)) && !(optOk && canPay(g, p, totalCost(g, p, o, src, { ...ctx, paid: true })))) return false
   if (isUnit(o)) return unitLocs(g, p, o, src, w).length > 0
   if (!speedOk(cardSpeed(o, src), w)) return false
   if (isGear(o)) return true
@@ -1291,7 +1375,8 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
   if (impl.optional) {
     const opt = impl.optional
     const canDiscard = !opt.discard || pl.hand.filter((u) => u !== o.uid).length >= opt.discard
-    if (canDiscard && canPay(g, p, totalCost(g, p, o, src, { paid: true, extraPower: 0 }))) {
+    const canKill = !opt.killFriendly || units(g).some((u) => u.controller === p)
+    if (canDiscard && canKill && canPay(g, p, totalCost(g, p, o, src, { paid: true, extraPower: 0 }))) {
       const yes = yield* yesNo(g, p, `${o.card.name}: ${opt.label}?`, true, { cancel: true, rule: '356.2.b' })
       if (yes == null) return false
       ctx.paid = yes
@@ -1313,6 +1398,33 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       ctx.repeat = yes
     }
   }
+  // 832: Show Off, deciso durante la finalizzazione
+  if (impl.showOff) {
+    const so = impl.showOff
+    const cands = [...pl.hand.map((u) => g.objs.get(u)!), ...board(g).filter((x) => x.controller === p)].filter((x) => x !== o && so.filter(g, x))
+    if (cands.length) {
+      const r = yield* choose(g, p, `${o.card.name}: Show Off ${so.label}? (puoi non mostrare nulla)`, cands.map((x) => ({ label: `${x.card.name}${x.zone === 'hand' ? ' (dalla mano)' : ''}`, uid: x.uid, ai: (x.card.power ?? 0) + (x.card.energy ?? 0) / 10 })), 0, 1, { rule: '832.1.c' })
+      if (r?.length) {
+        const shown = cands[r[0]]
+        ctx.data.showed = { name: shown.card.name, energy: shown.card.energy ?? 0, power: shown.card.power ?? 0 } // 832.1.d.1
+        log(g, `${pname(g, p)} mostra ${shown.card.name} (Show Off).`, '832.1.c', p)
+      }
+    }
+  }
+  // Costi aggiuntivi offerti da altri oggetti per le magie (es. Legend di Seraphine)
+  const extraPays: (() => Gen<boolean>)[] = []
+  if (isSpell(o)) {
+    for (const src of [g.objs.get(pl.legend)!, ...board(g).filter((x) => x.controller === p)]) {
+      const opt = implOf(src.card.name).spellCostOption
+      if (!opt || !opt.can(g, src)) continue
+      const yes = yield* yesNo(g, p, `${opt.label}?`, (o.card.energy ?? 0) >= 2, { cancel: true, rule: '356.2.b' })
+      if (yes == null) return false
+      if (yes) {
+        ctx.discount = (ctx.discount ?? 0) + opt.energy
+        extraPays.push(() => opt.pay(g, src))
+      }
+    }
+  }
   // 355.2: posizione delle unità
   let loc: LocId | null = null
   if (isUnit(o)) {
@@ -1331,6 +1443,11 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       if (!r) return false
       loc = locs[r[0]]
     }
+  } else if (isGear(o) && impl.static?.deploy) {
+    // 830.1.b.1: si gioca in un campo qualsiasi
+    const r = yield* choose(g, p, `In quale campo giochi ${o.card.name}?`, g.bfs.map((b) => ({ label: bfName(g, b.loc), loc: b.loc, ai: b.controller === p ? 1 : 0 })), 1, 1, { cancel: true, rule: '830.1.b' })
+    if (!r) return false
+    loc = g.bfs[r[0]].loc
   } else if (isGear(o)) loc = baseOf(p) // 359.2.d
   // 355.3-355.5: scelte delle magie
   if (isSpell(o) && impl.prepare) {
@@ -1344,10 +1461,16 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
     return false
   }
   pay(g, p, cost)
+  for (const f of extraPays) yield* f()
   const srcLabel = src === 'trash' ? ' dal trash con Flow' : src === 'facedown' ? ' da nascosta' : src === 'champion' ? ' dalla zona campione' : ''
   const onChain = moveZone(g, o, 'chain') // 354
   if (ctx.paid && impl.optional?.discard) yield* discard(g, p, impl.optional.discard)
   if (ctx.repeat && impl.repeat?.discard) yield* discard(g, p, impl.repeat.discard)
+  if (ctx.paid && impl.optional?.killFriendly) {
+    const mine = units(g).filter((u) => u.controller === p)
+    const r = yield* choose(g, p, 'Quale tua unità uccidi come costo?', mine.map((u) => unitOption(g, u, -might(g, u), p)), 1, 1, { rule: '357.2' })
+    if (r) yield* kill(g, [mine[r[0]]], `costo di ${o.card.name}`, '357.2')
+  }
   pl.played++
   if (isUnit(onChain) || isGear(onChain)) {
     // 337.2 / 359.2: i permanenti si risolvono subito ed entrano sulla board
@@ -1362,7 +1485,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       perm.card,
     )
     applyContested(g, perm)
-    if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt })
+    if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt, showed: ctx.data.showed })
     firePlayed(g, perm, p)
     if (isUnit(perm) && isBf(loc)) {
       const bdef = implOf(bfAt(g, loc).card.name).bfUnitPlayed
@@ -1438,7 +1561,7 @@ function* standardMove(g: Game, p: PID): Gen<boolean> {
     }
     pay(g, p, c)
   }
-  for (const o of list) o.exhausted = true // 144.2
+  exhaustUnits(g, list, p) // 144.2
   yield* moveUnits(g, list, dests[d[0]], 'movimento standard', '144')
   return true
 }
@@ -1524,14 +1647,15 @@ function* activate(g: Game, p: PID, o: Obj, ab: AbilityDef): Gen<boolean> {
 
 // ---------------------------------------------------------------- partita e turni
 
-function* channel(g: Game, p: PID, n: number) {
+export function* channel(g: Game, p: PID, n: number, exhausted = false) {
   const pl = g.players[p]
   const got: string[] = []
   for (let i = 0; i < n && pl.runeDeck.length; i++) {
     const r = moveZone(g, g.objs.get(pl.runeDeck[0])!, 'runes') // 431.2.a: entrano pronte
+    r.exhausted = exhausted // 431.2
     got.push(r.card.domains[0])
   }
-  if (got.length) log(g, `${pname(g, p)} canalizza ${got.length} rune (${got.join(', ')}).`, n === 3 ? '487.7' : '315.3.b', p)
+  if (got.length) log(g, `${pname(g, p)} canalizza ${got.length} rune${exhausted ? ' esauste' : ''} (${got.join(', ')}).`, exhausted ? '431.2' : n === 3 ? '487.7' : '315.3.b', p)
 }
 
 function* mulligan(g: Game, p: PID): Gen {
@@ -1571,6 +1695,7 @@ function* takeTurn(g: Game): Gen {
   for (const x of g.players) {
     x.scored = []
     x.played = 0
+    x.fanfare = 0
   }
   for (const o of g.objs.values()) o.moves = 0
   g.diedThisTurn = 0

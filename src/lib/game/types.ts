@@ -86,6 +86,8 @@ export interface PlayerState {
   scored: LocId[]
   /** Carte giocate in questo turno. */
   played: number
+  /** Fanfare: quante delle prossime unità giocate in questo turno fanno pescare 1. */
+  fanfare: number
 }
 
 export interface Battlefield {

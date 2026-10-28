@@ -2,6 +2,7 @@
 import './cards'
 import './cards-vi'
 import './cards-rumble'
+import './cards-seraphine'
 import type { CardDb } from '../data'
 import { isBattlefield, isLegend, isRune } from '../data'
 import type { Card, Deck } from '../types'
