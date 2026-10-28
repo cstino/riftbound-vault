@@ -56,6 +56,13 @@ body,
   height: 100%;
 }
 
+/* L'app non si ingrandisce: niente zoom con due dita né con il doppio tocco */
+html {
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--ink-0);
@@ -122,6 +129,13 @@ button {
 input {
   font: inherit;
   color: inherit;
+}
+
+/* Safari su iPhone ingrandisce la pagina quando tocchi un campo con testo sotto i 16 px */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
 }
 
 :focus-visible {
