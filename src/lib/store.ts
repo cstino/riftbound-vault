@@ -21,6 +21,8 @@ interface VaultState {
   addQty: (cardId: string, delta: number) => void
   saveDeck: (deck: Deck) => void
   deleteDeck: (id: string) => void
+  /** Aggiunge alla collezione (o toglie) tutte le carte di un mazzo che possiedi fisicamente. */
+  setDeckOwned: (deck: Deck, owned: boolean) => void
   importData: (data: { owned: Record<string, number>; decks: Deck[] }) => void
   seed: (owned: Record<string, number>, decks: Deck[]) => void
 }
@@ -54,6 +56,33 @@ export const useVault = create<VaultState>()(
           return { decks }
         }),
       deleteDeck: (id) => setState((s) => ({ decks: s.decks.filter((d) => d.id !== id) })),
+      setDeckOwned: (deck, isOwned) =>
+        setState((s) => {
+          const owned = { ...s.owned }
+          let added: Record<string, number> | undefined
+          if (isOwned && !deck.addedToCollection) {
+            added = {}
+            const put = (id: string | null, q: number) => {
+              if (!id || q <= 0) return
+              added![id] = (added![id] ?? 0) + q
+            }
+            put(deck.legendId, 1)
+            for (const [id, q] of Object.entries(deck.main)) put(id, q)
+            for (const [id, q] of Object.entries(deck.runes)) put(id, q)
+            for (const id of deck.battlefields) put(id, 1)
+            for (const [id, q] of Object.entries(added)) owned[id] = (owned[id] ?? 0) + q
+          } else if (!isOwned && deck.addedToCollection) {
+            for (const [id, q] of Object.entries(deck.addedToCollection)) {
+              const left = (owned[id] ?? 0) - q
+              if (left > 0) owned[id] = left
+              else delete owned[id]
+            }
+          } else {
+            return {}
+          }
+          const decks = s.decks.map((d) => (d.id === deck.id ? { ...d, addedToCollection: added } : d))
+          return { owned, decks }
+        }),
       importData: (data) => setState({ owned: data.owned, decks: data.decks, seeded: true }),
       seed: (owned, decks) => setState({ owned, decks, seeded: true }),
     }),

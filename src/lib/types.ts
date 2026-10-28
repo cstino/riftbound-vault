@@ -37,6 +37,8 @@ export interface Deck {
   battlefields: string[]
   /** Mazzi importati dal file iniziale: si possono duplicare ma non vanno persi. */
   preset?: boolean
+  /** Copie aggiunte alla collezione con "Ho questo mazzo", per poterle togliere esattamente. */
+  addedToCollection?: Record<string, number>
   updatedAt: number
 }
 

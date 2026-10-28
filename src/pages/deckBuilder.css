@@ -373,3 +373,31 @@
   font-size: 12.5px;
   font-weight: 700;
 }
+
+.owned-deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, rgb(255 62 165 / 0.16), rgb(140 91 255 / 0.12));
+  border: 1px solid rgb(255 62 165 / 0.4);
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.owned-deck strong {
+  color: var(--text);
+}
+
+.owned-deck-on {
+  background: rgb(75 227 162 / 0.08);
+  border-color: rgb(75 227 162 / 0.4);
+}
+
+.owned-deck p {
+  flex: 1 1 220px;
+}

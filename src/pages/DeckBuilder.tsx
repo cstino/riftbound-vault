@@ -76,6 +76,7 @@ export function DeckBuilder() {
 
   return (
     <div className="builder">
+      {deck.preset && <OwnedDeckBox deck={deck} />}
       <header className="builder-head">
         <Link to="/mazzi" className="link-more">
           ← Mazzi
@@ -170,6 +171,51 @@ export function DeckBuilder() {
         </button>
       )}
     </div>
+  )
+}
+
+/** "Ho questo mazzo": aggiunge alla collezione le carte della lista ufficiale del precostruito. */
+function OwnedDeckBox({ deck }: { deck: Deck }) {
+  const db = useDb()
+  const setDeckOwned = useVault((s) => s.setDeckOwned)
+  const [busy, setBusy] = useState(false)
+  const added = deck.addedToCollection
+  const total = added ? Object.values(added).reduce((a, b) => a + b, 0) : 0
+
+  async function add() {
+    setBusy(true)
+    const presets: { name: string }[] = await fetch(asset('data/decks.json')).then((r) => r.json())
+    const original = presets.find((p) => `preset-${p.name.toLowerCase()}` === deck.id)
+    if (original) setDeckOwned({ ...presetToDeck(original as never, db), id: deck.id }, true)
+    setBusy(false)
+  }
+
+  return (
+    <motion.div layout className={`owned-deck${added ? ' owned-deck-on' : ''}`}>
+      {added ? (
+        <>
+          <p>
+            <strong>Hai questo mazzo.</strong> Le sue {total} carte (Legend, campi e rune compresi) sono nella tua collezione.
+          </p>
+          <button
+            type="button"
+            className="link-more"
+            onClick={() => confirm('Togliere dalla collezione le carte di questo mazzo?') && setDeckOwned(deck, false)}
+          >
+            Togli dalla collezione
+          </button>
+        </>
+      ) : (
+        <>
+          <p>
+            <strong>Hai comprato questo mazzo?</strong> Aggiungi alla collezione tutte le carte della lista ufficiale.
+          </p>
+          <button type="button" className="btn btn-primary btn-small" onClick={add} disabled={busy}>
+            Ho questo mazzo
+          </button>
+        </>
+      )}
+    </motion.div>
   )
 }
 
