@@ -437,6 +437,45 @@ export function deckOverall(deck: Deck, db: CardDb, meta: MetaData): Overall | n
 }
 
 // ---------------------------------------------------------------------------
+// Usabilità delle carte: presenza nelle liste di torneo ben piazzate
+
+export interface CardUsage {
+  /** Quota delle liste ben piazzate che la usano, tra quelle delle Legend che possono giocarla. */
+  share: number
+  /** Liste ben piazzate che la usano e liste in cui potrebbe stare. */
+  used: number
+  possible: number
+}
+
+/**
+ * Usabilità di ogni carta del mazzo principale, per nome. Il denominatore conta solo le liste di
+ * Legend con i domini (e per le Signature il tag) adatti, così una carta non è penalizzata dai mazzi
+ * in cui non può stare per regola (103.2.b, 103.3.d.2).
+ */
+export function cardUsage(db: CardDb, meta: MetaData): Map<string, CardUsage> {
+  const legends: { domains: Domain[]; tag: string | null; good: number; cards: Record<string, { share: number }> }[] = []
+  for (const [name, l] of Object.entries(meta.legends)) {
+    if (!l.good) continue
+    const card = db.cards.find((c) => c.name === name && isLegend(c))
+    if (!card) continue
+    legends.push({ domains: card.domains, tag: legendChampionTag(card, db), good: l.good, cards: l.cards })
+  }
+  const out = new Map<string, CardUsage>()
+  for (const c of db.cards) {
+    if (out.has(c.name) || !isMainDeckCard(c) || isToken(c)) continue
+    let used = 0
+    let possible = 0
+    for (const l of legends) {
+      if (!fitsIdentity(c, l.domains) || (isSignature(c) && (!l.tag || !c.tags.includes(l.tag)))) continue
+      possible += l.good
+      used += (l.cards[c.name]?.share ?? 0) * l.good
+    }
+    if (possible > 0) out.set(c.name, { share: used / possible, used: Math.round(used), possible })
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
 // Mazzi importati dal file Excel iniziale (public/data/decks.json)
 
 interface PresetDeck {

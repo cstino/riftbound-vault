@@ -39,3 +39,11 @@
   gap: 8px;
   margin: 14px 0 18px;
 }
+
+.use-note {
+  margin: 8px 0 12px;
+}
+
+.use-note a {
+  color: var(--cyan);
+}

@@ -12,9 +12,11 @@ interface Props {
   dimIfMissing?: boolean
   size?: 'sm' | 'md' | 'lg'
   layoutPrefix?: string
+  /** Usabilità nei tornei (0-1), se nota. */
+  usage?: number
 }
 
-export const CardThumb = memo(function CardThumb({ card, qty = 0, dimIfMissing, size = 'md', layoutPrefix = 'grid' }: Props) {
+export const CardThumb = memo(function CardThumb({ card, qty = 0, dimIfMissing, size = 'md', layoutPrefix = 'grid', usage }: Props) {
   const location = useLocation()
   const landscape = isBattlefield(card)
   return (
@@ -33,6 +35,11 @@ export const CardThumb = memo(function CardThumb({ card, qty = 0, dimIfMissing, 
         draggable={false}
       />
       {(qty > 1 || (dimIfMissing && qty > 0)) && <span className="thumb-qty">×{qty}</span>}
+      {usage !== undefined && (
+        <span className={`thumb-use ${usage >= 0.3 ? 'use-hi' : usage >= 0.05 ? 'use-mid' : 'use-lo'}`} title="Presenza nelle liste di torneo ben piazzate">
+          {Math.round(usage * 100)}%
+        </span>
+      )}
     </Link>
   )
 })

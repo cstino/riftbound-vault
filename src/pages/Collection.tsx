@@ -8,6 +8,8 @@ import { DOMAINS, type Card } from '../lib/types'
 import { CardThumb } from '../components/CardThumb'
 import { DomainIcon, RarityIcon } from '../components/Icons'
 import { cardParagraphs } from '../components/CardText'
+import { useMeta } from '../lib/useMeta'
+import { cardUsage } from '../lib/deck'
 import './collection.css'
 
 const TYPES: { key: string; label: string; test: (c: Card) => boolean }[] = [
@@ -21,6 +23,8 @@ const TYPES: { key: string; label: string; test: (c: Card) => boolean }[] = [
 ]
 
 const PAGE = 90
+/** Soglie del filtro di usabilità (presenza nelle liste ben piazzate). */
+const USE_STEPS = [5, 15, 30]
 
 export function Collection() {
   const db = useDb()
@@ -32,6 +36,10 @@ export function Collection() {
   const domain = params.get('dominio')
   const type = params.get('tipo')
   const rarity = params.get('rarita')
+  const minUse = Number(params.get('uso') ?? 0)
+  const byUse = params.get('ordina') === 'uso'
+  const meta = useMeta()
+  const usage = useMemo(() => (meta ? cardUsage(db, meta) : null), [db, meta])
   const [limit, setLimit] = useState(PAGE)
   const sentinel = useRef<HTMLDivElement>(null)
 
@@ -60,10 +68,11 @@ export function Collection() {
           c.tags.some((t) => t.toLowerCase() === needle) ||
           cardParagraphs(c.text).some((p) => p.toLowerCase().includes(needle)),
       )
-      .sort(sortCards)
-  }, [db, owned, all, q, set, domain, type, rarity])
+      .filter((c) => !minUse || (usage?.get(c.name)?.share ?? -1) * 100 >= minUse)
+      .sort((a, b) => (byUse ? (usage?.get(b.name)?.share ?? -1) - (usage?.get(a.name)?.share ?? -1) : 0) || sortCards(a, b))
+  }, [db, owned, all, q, set, domain, type, rarity, minUse, byUse, usage])
 
-  useEffect(() => setLimit(PAGE), [all, q, set, domain, type, rarity])
+  useEffect(() => setLimit(PAGE), [all, q, set, domain, type, rarity, minUse, byUse])
 
   // Carica altre carte quando si arriva in fondo
   useEffect(() => {
@@ -141,7 +150,28 @@ export function Collection() {
             </button>
           ))}
         </div>
+        {usage && (
+          <div className="chips" aria-label="Usabilità nei tornei">
+            {USE_STEPS.map((n) => (
+              <button key={n} className="chip" aria-pressed={minUse === n} onClick={() => toggle('uso', String(n))}>
+                Usata ≥ {n}%
+              </button>
+            ))}
+            <button className="chip" aria-pressed={byUse} onClick={() => toggle('ordina', 'uso')}>
+              Ordina per usabilità
+            </button>
+          </div>
+        )}
       </div>
+      {usage && (
+        <p className="tiny muted use-note">
+          La % su ogni carta è la presenza nelle liste di torneo ben piazzate dell’ultimo anno, contando solo i mazzi di Legend che possono usarla. Data provided by{' '}
+          <a href="https://topdeck.gg" target="_blank" rel="noreferrer">
+            TopDeck.gg
+          </a>
+          .
+        </p>
+      )}
 
       {results.length === 0 ? (
         <div className="empty">
@@ -155,7 +185,7 @@ export function Collection() {
       ) : (
         <div className="card-grid">
           {results.slice(0, limit).map((c) => (
-            <CardThumb key={c.id} card={c} qty={owned[c.id] ?? 0} dimIfMissing={all} />
+            <CardThumb key={c.id} card={c} qty={owned[c.id] ?? 0} dimIfMissing={all} usage={usage?.get(c.name)?.share} />
           ))}
         </div>
       )}

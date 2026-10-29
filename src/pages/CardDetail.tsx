@@ -7,6 +7,8 @@ import { CardText, keywordIdsIn } from '../components/CardText'
 import { HoloCard } from '../components/HoloCard'
 import { Explainer } from '../components/Explainer'
 import { DomainIcon, EnergyGlyph, MightGlyph, RarityIcon, TypeIcon } from '../components/Icons'
+import { useMeta } from '../lib/useMeta'
+import { cardUsage } from '../lib/deck'
 import './cardDetail.css'
 
 export function CardDetail() {
@@ -45,6 +47,8 @@ export function CardDetail() {
     const loose = Math.max(0, qty - locked.reduce((a, x) => a + x.q, 0))
     return { locked, freed, loose }
   }, [card, decks, qty])
+  const meta = useMeta()
+  const use = useMemo(() => (meta && card ? cardUsage(db, meta).get(card.name) : undefined), [meta, db, card])
   const keywords = useMemo(() => keywordIdsIn(card?.text ?? null), [card])
   const printings = useMemo(() => (card ? db.cards.filter((c) => c.name === card.name && c.id !== card.id) : []), [db, card])
   const inDecks = useMemo(
@@ -119,6 +123,14 @@ export function CardDetail() {
               )}
             </div>
             {card.tags.length > 0 && <p className="detail-tags">{card.tags.join(' · ')}</p>}
+            {use && (
+              <p className="detail-use">
+                Usabilità nei tornei: <strong>{Math.round(use.share * 100)}%</strong>{' '}
+                <span className="muted">
+                  (in {use.used} delle {use.possible} liste ben piazzate in cui può stare, ultimo anno)
+                </span>
+              </p>
+            )}
           </header>
 
           <div className="owned-box">
