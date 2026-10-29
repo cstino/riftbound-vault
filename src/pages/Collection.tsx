@@ -33,7 +33,8 @@ export function Collection() {
   const all = params.get('tutte') === '1'
   const q = params.get('q') ?? ''
   const set = params.get('set')
-  const domain = params.get('dominio')
+  // più domini insieme (es. Chaos e Fury); "none" = carte senza dominio
+  const domains = (params.get('dominio') ?? '').split(',').filter(Boolean)
   const type = params.get('tipo')
   const rarity = params.get('rarita')
   const minUse = Number(params.get('uso') ?? 0)
@@ -50,6 +51,10 @@ export function Collection() {
     setParams(next, { replace: true })
   }
   const toggle = (key: string, value: string) => update(key, params.get(key) === value ? null : value)
+  const toggleDomain = (d: string) => {
+    const cur = (params.get('dominio') ?? '').split(',').filter(Boolean)
+    update('dominio', (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]).join(','))
+  }
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -57,7 +62,11 @@ export function Collection() {
     return db.cards
       .filter((c) => (all ? true : owned[c.id]))
       .filter((c) => !set || c.set === set)
-      .filter((c) => !domain || c.domains.includes(domain as never))
+      .filter((c) => {
+        if (!domains.length) return true
+        const own = c.domains.filter((d) => d !== ('Colorless' as never))
+        return own.length ? own.some((d) => domains.includes(d)) : domains.includes('none')
+      })
       .filter((c) => !typeTest || typeTest(c))
       .filter((c) => !rarity || c.rarity === rarity)
       .filter(
@@ -70,9 +79,9 @@ export function Collection() {
       )
       .filter((c) => !minUse || (usage?.get(c.name)?.share ?? -1) * 100 >= minUse)
       .sort((a, b) => (byUse ? (usage?.get(b.name)?.share ?? -1) - (usage?.get(a.name)?.share ?? -1) : 0) || sortCards(a, b))
-  }, [db, owned, all, q, set, domain, type, rarity, minUse, byUse, usage])
+  }, [db, owned, all, q, set, params, type, rarity, minUse, byUse, usage])
 
-  useEffect(() => setLimit(PAGE), [all, q, set, domain, type, rarity, minUse, byUse])
+  useEffect(() => setLimit(PAGE), [all, q, set, params, type, rarity, minUse, byUse])
 
   // Carica altre carte quando si arriva in fondo
   useEffect(() => {
@@ -131,11 +140,14 @@ export function Collection() {
         </div>
         <div className="chips" aria-label="Dominio">
           {DOMAINS.map((d) => (
-            <button key={d} className="chip" aria-pressed={domain === d} onClick={() => toggle('dominio', d)}>
+            <button key={d} className="chip" aria-pressed={domains.includes(d)} onClick={() => toggleDomain(d)}>
               <DomainIcon domain={d} size={16} />
               {d}
             </button>
           ))}
+          <button className="chip" aria-pressed={domains.includes('none')} onClick={() => toggleDomain('none')}>
+            Senza dominio
+          </button>
         </div>
         <div className="chips" aria-label="Tipo">
           {TYPES.map((t) => (
