@@ -249,7 +249,18 @@ export interface MetaData {
   days: number
   generatedAt: number
   goodRule: string
-  legends: Record<string, { lists: number; good: number; cards: Record<string, { share: number; copies: number }> }>
+  /** Stima delle vittorie attese (scripts/update_meta.py, build_model). */
+  model?: { days: number; lists: number; beta: number; kl: number; k: number; best: number }
+  legends: Record<
+    string,
+    {
+      lists: number
+      good: number
+      cards: Record<string, { share: number; copies: number }>
+      /** rate: vittorie della Legend; cards: effetto di ogni carta sulle vittorie; games: partite osservate. */
+      model?: { rate: number; games: number; cards: Record<string, number> }
+    }
+  >
 }
 
 /** Sotto queste liste ben piazzate gli switch si mostrano lo stesso, ma con l'avviso che le percentuali sono instabili. */
@@ -368,6 +379,61 @@ export function metaSuggestions(deck: Deck, db: CardDb, meta: MetaData, limit = 
   }
   list.sort((a, b) => b.share - a.share || a.card.name.localeCompare(b.card.name))
   return { good: m.good, lists: m.lists, weak: m.good < META_MIN_GOOD, list: list.slice(0, limit) }
+}
+
+// ---------------------------------------------------------------------------
+// Overall: vittorie attese nei tornei recenti, in proporzione al mazzo migliore
+
+/** Sotto queste partite osservate per la Legend la stima è poco affidabile. */
+export const OVERALL_MIN_GAMES = 300
+
+export interface Overall {
+  /** 1-100: vittorie attese in proporzione al mazzo con la stima più alta dei tornei recenti (= 100). */
+  overall: number
+  /** Vittorie attese (0-1) e intervallo al 95% dovuto ai dati sulla Legend. */
+  expected: number
+  low: number
+  high: number
+  /** Vittorie attese del mazzo di riferimento (overall 100). */
+  best: number
+  games: number
+  weak: boolean
+  /** Carte del mazzo che spostano di più la stima, con il loro effetto (in punti di vittorie su 100). */
+  top: { name: string; effect: number }[]
+}
+
+/**
+ * Vittorie attese di un mazzo: tasso della Legend nei tornei recenti più l'effetto medio delle sue
+ * carte (quanto vincono in più o in meno le liste che le usano), pesato per le copie.
+ */
+export function deckOverall(deck: Deck, db: CardDb, meta: MetaData): Overall | null {
+  const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
+  const m = legend ? meta.legends[legend.name]?.model : undefined
+  const g = meta.model
+  if (!legend || !m || !g) return null
+  const byName = namesIn(deck, db)
+  const tot = [...byName.values()].reduce((a, b) => a + b, 0)
+  if (!tot) return null
+  let impact = 0
+  const top: { name: string; effect: number }[] = []
+  for (const [name, q] of byName) {
+    const e = m.cards[name] ?? 0
+    impact += (e * q) / tot
+    if (e) top.push({ name, effect: (g.beta * e * q * 100) / tot })
+  }
+  const expected = Math.min(0.99, Math.max(0.01, m.rate + g.beta * impact))
+  const margin = 1.96 * Math.sqrt((m.rate * (1 - m.rate)) / (m.games + g.kl))
+  top.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect))
+  return {
+    overall: Math.max(1, Math.min(100, Math.round((100 * expected) / g.best))),
+    expected,
+    low: Math.max(0, expected - margin),
+    high: Math.min(1, expected + margin),
+    best: g.best,
+    games: m.games,
+    weak: m.games < OVERALL_MIN_GAMES,
+    top: top.slice(0, 6),
+  }
 }
 
 // ---------------------------------------------------------------------------

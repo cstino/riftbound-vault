@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDb } from '../lib/useDb'
+import { useMeta } from '../lib/useMeta'
 import { useVault } from '../lib/store'
 import type { Card, Deck } from '../lib/types'
 import { asset, isBasePrinting, isBattlefield, isChampionUnit, isLegend, isRune, isSignature, legendChampionTag, sortCards, cardImage } from '../lib/data'
@@ -19,8 +20,8 @@ import {
   metaSwitches,
   META_IN,
   META_OUT,
-  type MetaData,
   type MetaSwitch,
+  deckOverall,
   metaSuggestions,
   typicalCopies,
   legendMeta,
@@ -496,6 +497,8 @@ function DeckTab({ deck, edit, requestAdd }: { deck: Deck; edit: (fn: (d: Deck) 
 
   return (
     <div className="deck-tab">
+      <OverallPanel deck={deck} />
+
       <section className="section">
         <div className="section-head">
           <h2>Legend e campione</h2>
@@ -814,22 +817,88 @@ function BoxTag({ boxes }: { boxes: { deck: string; q: number }[] }) {
   )
 }
 
-let metaPromise: Promise<MetaData | null> | null = null
+/**
+ * Overall del mazzo: vittorie attese nei tornei recenti in proporzione al mazzo migliore (= 100).
+ * Mostra sempre anche le vittorie attese, il margine e le carte che lo spostano di più.
+ */
+function OverallPanel({ deck }: { deck: Deck }) {
+  const db = useDb()
+  const meta = useMeta()
+  const [open, setOpen] = useState(false)
+  const o = useMemo(() => (meta ? deckOverall(deck, db, meta) : null), [meta, deck, db])
+  if (meta === undefined) return null
+  if (!meta || !o) return <p className="switch-none">Overall non disponibile: nessuna partita di torneo recente con questa Legend.</p>
+  const p = (x: number) => `${Math.round(x * 100)}%`
+  return (
+    <section className="section overall">
+      <div className="overall-main">
+        <OverallRing value={o.overall} />
+        <div className="overall-text">
+          <h2>Overall</h2>
+          <p>
+            Vittorie attese nei tornei: <strong>{p(o.expected)}</strong> <span className="muted">(tra {p(o.low)} e {p(o.high)})</span>
+          </p>
+          <p className="tiny muted">100 = {p(o.best)} di vittorie attese, il mazzo migliore dei tornei degli ultimi {meta.model!.days} giorni.</p>
+        </div>
+      </div>
+      {o.weak && (
+        <p className="switch-weak">
+          Stima poco affidabile: solo {o.games} partite di torneo recenti con questa Legend. Il margine largo lo mostra.
+        </p>
+      )}
+      <button type="button" className="link-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {open ? 'Nascondi i dettagli' : 'Cosa lo sposta e come si calcola'}
+      </button>
+      {open && (
+        <div className="overall-more">
+          {o.top.length > 0 && (
+            <ul className="overall-top">
+              {o.top.map((t) => (
+                <li key={t.name}>
+                  <span>{t.name}</span>
+                  <strong className={t.effect >= 0 ? 'ok' : 'todo'}>
+                    {t.effect >= 0 ? '+' : '−'}
+                    {Math.abs(t.effect).toLocaleString('it-IT', { maximumFractionDigits: 2 })} vittorie su 100
+                  </strong>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="tiny muted">
+            Si parte da quanto vince la Legend nei tornei degli ultimi {meta.model!.days} giorni ({o.games} partite) e si aggiunge l’effetto di ogni carta: quanto vincono in più o
+            in meno le liste che la usano, pesato per le copie. Le carte viste poco pesano poco. Il modello è stato verificato prevedendo tornei successivi a quelli usati per
+            costruirlo: prevede meglio del 50% per tutti, ma le carte spostano la stima di poco. Chi gioca conta più del mazzo. Si aggiorna con i dati dei tornei.
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
 
-/** Statistiche dei tornei (public/data/meta.json); null se il file non c'è. */
-function useMeta() {
-  const [meta, setMeta] = useState<MetaData | null | undefined>(undefined)
-  useEffect(() => {
-    metaPromise ??= fetch(asset('data/meta.json'))
-      .then((r) => (r.ok ? (r.json() as Promise<MetaData>) : null))
-      .catch(() => null)
-    let alive = true
-    metaPromise.then((m) => alive && setMeta(m))
-    return () => {
-      alive = false
-    }
-  }, [])
-  return meta
+/** Indicatore circolare dell'overall. */
+export function OverallRing({ value, size = 76 }: { value: number; size?: number }) {
+  const r = size / 2 - 6
+  const c = 2 * Math.PI * r
+  return (
+    <span className="overall-ring" style={{ width: size, height: size }} aria-label={`Overall ${value} su 100`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} className="overall-track" />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          className="overall-arc"
+          strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: c * (1 - value / 100) }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+        />
+      </svg>
+      <motion.strong key={value} initial={{ scale: 1.25 }} animate={{ scale: 1 }}>
+        {value}
+      </motion.strong>
+    </span>
+  )
 }
 
 const pct = (x: number) => `${Math.round(x * 100)}%`

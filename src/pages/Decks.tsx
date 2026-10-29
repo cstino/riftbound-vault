@@ -3,7 +3,8 @@ import { motion } from 'motion/react'
 import { useDb } from '../lib/useDb'
 import { useVault } from '../lib/store'
 import { cardImage } from '../lib/data'
-import { countOf, emptyDeck, validateDeck } from '../lib/deck'
+import { countOf, deckOverall, emptyDeck, validateDeck } from '../lib/deck'
+import { useMeta } from '../lib/useMeta'
 import { DomainIcon } from '../components/Icons'
 import { ownedCoverage } from './deckUtils'
 import './decks.css'
@@ -13,6 +14,7 @@ export function Decks() {
   const decks = useVault((s) => s.decks)
   const owned = useVault((s) => s.owned)
   const saveDeck = useVault((s) => s.saveDeck)
+  const meta = useMeta()
   const navigate = useNavigate()
 
   function create() {
@@ -39,6 +41,7 @@ export function Decks() {
           const champ = d.championId ? db.byId.get(d.championId) : undefined
           const issues = validateDeck(d, db)
           const cov = ownedCoverage(d, db, owned, decks)
+          const ovr = meta ? deckOverall(d, db, meta) : null
           return (
             <motion.div key={d.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}>
               <Link to={`/mazzi/${d.id}`} className="deck-card">
@@ -48,6 +51,11 @@ export function Decks() {
                 <div className="deck-card-body">
                   <div className="deck-card-title">
                     <h2>{d.name}</h2>
+                    {ovr && (
+                      <span className="ovr-badge" title={`Overall: ${Math.round(ovr.expected * 100)}% di vittorie attese nei tornei`}>
+                        {ovr.overall}
+                      </span>
+                    )}
                     {d.preset && <span className="tiny">Precostruito</span>}
                   </div>
                   <p className="muted">{legend ? legend.name : 'Legend da scegliere'}</p>

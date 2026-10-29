@@ -64,3 +64,17 @@
   color: var(--text-2);
   margin-top: 4px;
 }
+
+.ovr-badge {
+  margin-left: auto;
+  flex: none;
+  min-width: 34px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--magenta), var(--violet));
+}
