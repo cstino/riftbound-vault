@@ -78,3 +78,9 @@
   color: #fff;
   background: linear-gradient(135deg, var(--magenta), var(--violet));
 }
+
+.page-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

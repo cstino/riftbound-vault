@@ -30,9 +30,14 @@ export function Decks() {
           <h1>Deck</h1>
           <p>{decks.length} mazzi. Ogni mazzo viene controllato con le regole di costruzione ufficiali.</p>
         </div>
-        <button className="btn btn-primary" onClick={create}>
-          Nuovo mazzo
-        </button>
+        <div className="page-head-actions">
+          <button className="btn btn-primary" onClick={create}>
+            Nuovo mazzo
+          </button>
+          <Link className="btn" to="/mazzi/auto">
+            Costruisci in automatico
+          </Link>
+        </div>
       </header>
 
       <div className="deck-list">

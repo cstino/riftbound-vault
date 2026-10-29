@@ -8,6 +8,7 @@ import { Home } from './pages/Home'
 import { Collection } from './pages/Collection'
 import { Decks } from './pages/Decks'
 import { DeckBuilder } from './pages/DeckBuilder'
+import { AutoBuild } from './pages/AutoBuild'
 import { Learn } from './pages/Learn'
 import { LearnChapterPage } from './pages/LearnChapter'
 import { GlossaryPage } from './pages/GlossaryPage'
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/collezione" element={<Collection />} />
               <Route path="/mazzi" element={<Decks />} />
+              <Route path="/mazzi/auto" element={<AutoBuild />} />
               <Route path="/mazzi/:id" element={<DeckBuilder />} />
               <Route path="/aggiungi" element={<AddCards />} />
               <Route path="/impara" element={<Learn />} />
