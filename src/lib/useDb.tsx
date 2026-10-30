@@ -38,6 +38,8 @@ async function openVault(userId: string, db: CardDb) {
     const { presets } = await loadSeed()
     useVault.getState().seed({}, presets.map((p: never) => presetToDeck(p, db)))
   }
+  // le scatole dei mazzi posseduti seguono le liste attuali (anche se modificate prima di questa regola)
+  useVault.getState().syncBoxes(db)
   // offline: si salvano solo le modifiche fatte da qui in poi, appena torna la rete
   startSync(userId, online)
   if (!online) markUnreachable()

@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
 import type { Deck } from './types'
-import { asset } from './data'
+import { asset, type CardDb } from './data'
+import { syncBoxes } from './deck'
 
 // Collezione e mazzi restano nel browser (IndexedDB). Al primo avvio vengono caricati
 // dai file del repository; l'esportazione JSON permette di salvarli o spostarli.
@@ -25,6 +26,8 @@ interface VaultState {
   setDeckOwned: (deck: Deck, owned: boolean) => void
   /** Libera (o rimette nella scatola) le carte di un mazzo posseduto. */
   setDeckReleased: (id: string, released: boolean) => void
+  /** Allinea le carte chiuse nelle scatole dei mazzi posseduti alle loro liste attuali. */
+  syncBoxes: (db: CardDb) => void
   /** Aggiunge (o toglie, con quantità negative) più carte in una volta. */
   addMany: (cards: Record<string, number>) => void
   importData: (data: { owned: Record<string, number>; decks: Deck[] }) => void
@@ -88,6 +91,11 @@ export const useVault = create<VaultState>()(
           return { owned, decks }
         }),
       setDeckReleased: (id, released) => setState((s) => ({ decks: s.decks.map((d) => (d.id === id ? { ...d, released } : d)) })),
+      syncBoxes: (db) =>
+        setState((s) => {
+          const decks = syncBoxes(s.decks, s.owned, db)
+          return decks === s.decks ? {} : { decks }
+        }),
       addMany: (cards) =>
         setState((s) => {
           const owned = { ...s.owned }

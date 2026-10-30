@@ -50,6 +50,7 @@ export function DeckBuilder() {
   const db = useDb()
   const deck = useVault((s) => s.decks.find((d) => d.id === id))
   const saveDeck = useVault((s) => s.saveDeck)
+  const syncBoxes = useVault((s) => s.syncBoxes)
   const deleteDeck = useVault((s) => s.deleteDeck)
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('mazzo')
@@ -70,6 +71,7 @@ export function DeckBuilder() {
     const next: Deck = structuredClone(deck)
     fn(next)
     saveDeck(next)
+    syncBoxes(db)
   }
   const legend = deck.legendId ? db.byId.get(deck.legendId) : undefined
   const champion = deck.championId ? db.byId.get(deck.championId) : undefined
@@ -167,7 +169,10 @@ export function DeckBuilder() {
               saveDeck({
                 ...presetToDeck(original as never, db),
                 name: deck.name,
+                addedToCollection: deck.addedToCollection,
+                released: deck.released,
               })
+            syncBoxes(db)
           }}
         >
           Ripristina la lista ufficiale
@@ -203,6 +208,7 @@ function OwnedDeckBox({ deck }: { deck: Deck }) {
   const db = useDb()
   const setDeckOwned = useVault((s) => s.setDeckOwned)
   const setDeckReleased = useVault((s) => s.setDeckReleased)
+  const syncBoxes = useVault((s) => s.syncBoxes)
   const [busy, setBusy] = useState(false)
   const added = deck.addedToCollection
   const total = added ? Object.values(added).reduce((a, b) => a + b, 0) : 0
@@ -241,7 +247,9 @@ function OwnedDeckBox({ deck }: { deck: Deck }) {
                         confirmLabel: 'Libera le carte',
                       },
                 )
-                if (ok) setDeckReleased(deck.id, !deck.released)
+                if (!ok) return
+                setDeckReleased(deck.id, !deck.released)
+                syncBoxes(db)
               }}
             >
               {deck.released ? 'Rimetti nel mazzo' : 'Libera le carte'}

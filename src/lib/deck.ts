@@ -240,6 +240,53 @@ export function boxesOf(db: CardDb, decks: Deck[], name: string, except?: string
   return out
 }
 
+/**
+ * Le copie chiuse nella scatola di un mazzo posseduto seguono la sua lista attuale: se togli una carta
+ * dal mazzo torna sfusa, se ne metti una sfusa finisce nella scatola. Per ogni carta del mazzo si
+ * prendono prima le stesse stampe, poi quelle già nella scatola, poi le altre stampe con lo stesso
+ * nome, senza superare le copie possedute e non chiuse in altre scatole. La collezione non cambia.
+ */
+export function syncBoxes(decks: Deck[], owned: Record<string, number>, db: CardDb): Deck[] {
+  let changed = false
+  const out = decks.map((d) => ({ ...d }))
+  for (const d of out) {
+    if (!d.addedToCollection || d.released) continue
+    const free = availableCopies(owned, out, d.id)
+    const need = new Map<string, { ids: string[]; q: number }>()
+    const want = (id: string | null, q: number) => {
+      const c = id ? db.byId.get(id) : undefined
+      if (!c || q <= 0) return
+      const n = need.get(c.name) ?? { ids: [], q: 0 }
+      if (!n.ids.includes(c.id)) n.ids.push(c.id)
+      n.q += q
+      need.set(c.name, n)
+    }
+    want(d.legendId, 1)
+    for (const [id, q] of Object.entries(d.main)) want(id, q)
+    for (const [id, q] of Object.entries(d.runes)) want(id, q)
+    for (const id of d.battlefields) want(id, 1)
+    const box: Record<string, number> = {}
+    for (const [name, n] of need) {
+      const prints = Object.keys(owned).filter((id) => db.byId.get(id)?.name === name)
+      const old = Object.keys(d.addedToCollection).filter((id) => prints.includes(id))
+      let left = n.q
+      for (const id of new Set([...n.ids, ...old, ...prints])) {
+        const q = Math.min(left, (free[id] ?? 0) - (box[id] ?? 0))
+        if (q <= 0) continue
+        box[id] = (box[id] ?? 0) + q
+        left -= q
+        if (!left) break
+      }
+    }
+    const before = d.addedToCollection
+    if (Object.keys(box).length !== Object.keys(before).length || Object.entries(box).some(([id, q]) => before[id] !== q)) {
+      d.addedToCollection = box
+      changed = true
+    }
+  }
+  return changed ? out : decks
+}
+
 // ---------------------------------------------------------------------------
 // Switch dai tornei (public/data/meta.json, da scripts/update_meta.py con i dati di TopDeck.gg)
 
