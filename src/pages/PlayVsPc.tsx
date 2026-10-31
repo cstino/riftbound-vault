@@ -151,6 +151,11 @@ export function PlayVsPc() {
               <span className="versus-art">{r?.champ && <img src={cardImage(r.champ)} alt="" />}</span>
               <span className="versus-who">{sd === 'mine' ? 'Tu' : 'PC'}</span>
               <strong>{r?.deck.name ?? 'Scegli'}</strong>
+              {r && !r.cov.playable && (
+                <span className="versus-off tiny">
+                  Non giocabile: {r.cov.missing.length ? `${r.cov.missing.length === 1 ? 'manca nel motore' : 'mancano nel motore'} ${r.cov.missing.join(', ')}` : 'mazzo incompleto'}
+                </span>
+              )}
               <span className="versus-change tiny">Cambia mazzo</span>
             </motion.button>
           )

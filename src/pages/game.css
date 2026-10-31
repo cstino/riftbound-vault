@@ -2143,3 +2143,10 @@ body.no-scroll {
     font-size: 13px;
   }
 }
+
+/* mazzo scelto ma non giocabile: si dice subito perché */
+.versus-off {
+  color: var(--warn);
+  font-weight: 700;
+  text-wrap: balance;
+}
