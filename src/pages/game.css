@@ -1051,7 +1051,8 @@ body.no-scroll {
   width: min(100%, 760px);
   height: 100dvh;
   margin: 0 auto;
-  overflow: hidden;
+  /* clip e non hidden: il tavolo non deve scorrere nemmeno quando una carta della mano esce dal bordo */
+  overflow: clip;
   display: grid;
   grid-template-rows: 30px auto minmax(52px, 0.5fr) minmax(150px, 230px) minmax(52px, 0.5fr) auto auto 128px;
   gap: 5px;
@@ -1948,4 +1949,197 @@ body.no-scroll {
   border: 1px dashed var(--line-strong);
   color: var(--text-2);
   text-align: left;
+}
+
+/* ---------------------------------------------------------------- tavolo da computer
+   Schermo largo: il tavolo occupa la larghezza, a destra una colonna con cronaca sempre
+   visibile e comandi; carte e campi più grandi. La condizione è la stessa di WIDE in GameBoard. */
+.table-side {
+  display: none;
+}
+
+@media (min-width: 1100px) and (min-height: 640px) {
+  .shell-game .main {
+    max-width: none;
+  }
+
+  .table {
+    --side-w: 340px;
+    width: 100%;
+    max-width: 1680px;
+    grid-template-columns: minmax(0, 1fr) var(--side-w);
+    /* le altezze seguono lo schermo: su un portatile da 720 px ci sta tutto senza scorrere */
+    --chip: clamp(42px, 7.4vh, 90px);
+    --tile: clamp(36px, 5.4vh, 60px);
+    --hand: clamp(80px, 12vh, 128px);
+    grid-template-rows: 32px auto minmax(calc(var(--chip) * 1.4 + 8px), 0.5fr) minmax(150px, 1fr) minmax(calc(var(--chip) * 1.4 + 8px), 0.5fr) auto calc(var(--hand) * 1.4 + 30px);
+    grid-template-areas:
+      'corner side'
+      'oppmat side'
+      'oppbase side'
+      'bfs side'
+      'mybase side'
+      'mymat side'
+      'fan controls';
+    column-gap: 16px;
+    row-gap: 6px;
+    padding: 8px 16px 0;
+  }
+
+  .table-corner {
+    grid-area: corner;
+  }
+
+  .table > .mat-opp {
+    grid-area: oppmat;
+  }
+
+  .table > .base-opp {
+    grid-area: oppbase;
+  }
+
+  .table > .bfs {
+    grid-area: bfs;
+    gap: 14px;
+  }
+
+  .table > .base-me {
+    grid-area: mybase;
+  }
+
+  .table > .mat-me {
+    grid-area: mymat;
+  }
+
+  .table > .controls {
+    grid-area: controls;
+    grid-template-columns: 1fr;
+    align-content: start;
+    padding-top: 10px;
+  }
+
+  .table > .fan {
+    grid-area: fan;
+  }
+
+  .controls-btns {
+    justify-content: flex-end;
+  }
+
+  .end-btn {
+    width: 92px;
+    height: 92px;
+    margin-top: 0;
+    font-size: 14px;
+  }
+
+  .banner strong {
+    white-space: normal;
+  }
+
+  .banner .tiny {
+    white-space: normal;
+  }
+
+  /* cronaca sempre visibile: il pulsante non serve più */
+  .corner-log {
+    display: none;
+  }
+
+  .table-side {
+    grid-area: side;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    padding: 12px;
+    border-radius: var(--r-md);
+    background: rgb(255 255 255 / 0.03);
+    border: 1px solid var(--line);
+  }
+
+  .table-side h2 {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  .live-log {
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+    scrollbar-width: thin;
+    font-size: 12.5px;
+  }
+
+  .opp-hand {
+    left: calc((100% - var(--side-w) - 16px) / 2);
+    top: -22px;
+  }
+
+  .opp-hand .card-back {
+    width: 38px;
+    height: 53px;
+    left: -19px;
+  }
+
+  .tile-card {
+    width: var(--tile);
+  }
+
+  .tile-label {
+    font-size: 11px;
+  }
+
+  .mat {
+    gap: 12px;
+    padding: 4px 12px;
+  }
+
+  .table .rune {
+    width: 22px;
+    height: 22px;
+  }
+
+  .table .unit-chip {
+    width: var(--chip);
+  }
+
+  .table .bf .unit-chip {
+    width: calc(var(--chip) * 1.12);
+  }
+
+  .table .base-units {
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .bf-art {
+    height: 110px;
+  }
+
+  .table .bf {
+    padding: 10px 12px;
+  }
+
+  .fan-card {
+    width: var(--hand);
+    margin-left: calc(var(--hand) / -2);
+    top: 22px;
+  }
+
+  .table .chain-bar {
+    left: 16px;
+    right: calc(var(--side-w) + 32px);
+    bottom: calc(var(--hand) * 1.4 + 44px);
+  }
+
+  .fan-actions {
+    bottom: 70px;
+  }
+
+  .online-bar {
+    flex: 1;
+    justify-content: center;
+    font-size: 13px;
+  }
 }

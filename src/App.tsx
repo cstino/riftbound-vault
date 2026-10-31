@@ -17,6 +17,7 @@ import { Quiz } from './pages/Quiz'
 import { Training } from './pages/Training'
 import { PlayVsPc } from './pages/PlayVsPc'
 import { GameBoard } from './pages/GameBoard'
+import { OnlineLobby, OnlineRoom } from './pages/OnlinePlay'
 import { Playground } from './pages/Playground'
 import './app.css'
 
@@ -29,7 +30,7 @@ export default function App() {
   const pageLocation = background ?? location
 
   return (
-    <div className={`shell${pageLocation.pathname === '/playground/partita/gioca' ? ' shell-game' : ''}`}>
+    <div className={`shell${pageLocation.pathname === '/playground/partita/gioca' || /^\/playground\/online\/./.test(pageLocation.pathname) ? ' shell-game' : ''}`}>
       <Nav />
       <main className="main">
         <AnimatePresence mode="wait" initial={false}>
@@ -54,6 +55,8 @@ export default function App() {
               <Route path="/playground/allenamento/:id" element={<Training />} />
               <Route path="/playground/partita" element={<PlayVsPc />} />
               <Route path="/playground/partita/gioca" element={<GameBoard />} />
+              <Route path="/playground/online" element={<OnlineLobby />} />
+              <Route path="/playground/online/:id" element={<OnlineRoom />} />
               {/* vecchi indirizzi, quando stavano in Impara */}
               <Route path="/impara/allenamento" element={<Navigate to="/playground/allenamento" replace />} />
               <Route path="/impara/partita" element={<Navigate to="/playground/partita" replace />} />

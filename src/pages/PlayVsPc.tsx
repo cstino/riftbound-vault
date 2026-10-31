@@ -15,7 +15,7 @@ import './game.css'
 type Side = 'mine' | 'pc'
 
 /** Mazzi tra cui scegliere: i tuoi e quelli ufficiali che non hai ancora in Mazzi. */
-function useDeckChoices(): Deck[] {
+export function useDeckChoices(): Deck[] {
   const db = useDb()
   const mine = useVault((s) => s.decks)
   const [products, setProducts] = useState<Product[]>([])

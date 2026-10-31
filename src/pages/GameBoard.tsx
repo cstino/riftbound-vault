@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { asset, cardImage } from '../lib/data'
@@ -14,8 +14,39 @@ import { CardText } from '../components/CardText'
 import { useVault } from '../lib/store'
 import './game.css'
 
-const ME: PID = 0
-const OPP: PID = 1
+/** Da che parte del tavolo si guarda: il giocatore di questo dispositivo e come chiamare l'avversario. */
+export interface Seat {
+  me: PID
+  /** "il PC" oppure il nome dell'avversario online. */
+  name: string
+  /** Nome corto per le etichette: "PC" o il nome. */
+  short: string
+  /** "del PC" oppure "di Marco". */
+  of: string
+}
+export const PC_SEAT: Seat = { me: 0, name: 'il PC', short: 'PC', of: 'del PC' }
+const SeatContext = createContext<Seat>(PC_SEAT)
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+/** Tavolo da computer: schermo largo e abbastanza alto (stessa condizione di game.css). */
+const WIDE = '(min-width: 1100px) and (min-height: 640px)'
+/** Larghezza della colonna laterale con la cronaca (game.css, --side-w). */
+const SIDE_W = 340
+function useWide() {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE)
+    const on = () => setWide(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return wide
+}
+
+/** ME e OPP dal punto di vista di chi guarda. */
+function useSeat() {
+  const seat = useContext(SeatContext)
+  return { ...seat, ME: seat.me, OPP: (seat.me === 0 ? 1 : 0) as PID }
+}
 
 export function GameBoard() {
   const match = useGame((s) => s.match)
@@ -23,7 +54,19 @@ export function GameBoard() {
   const bump = useGame((s) => s.bump)
   useAiRunner(match, version, bump)
   if (!match) return <Navigate to="/playground/partita" replace />
-  return <Board match={match} version={version} />
+  return (
+    <Board
+      match={match}
+      version={version}
+      seat={PC_SEAT}
+      exitTo="/playground/partita"
+      onAnswer={(a) => {
+        match.next(a)
+        bump()
+      }}
+      renderOver={(g, onReview) => <GameOver g={g} onReview={onReview} />}
+    />
+  )
 }
 
 /** Fa giocare il PC un passo alla volta, con una pausa sulle azioni perché si possano seguire. */
@@ -33,7 +76,7 @@ function useAiRunner(match: Match | null, version: number, bump: () => void) {
     if (!match || !d || match.isHuman(d)) return
     // dopo una carta giocata dal PC si aspetta di più, per lasciarla vedere (Spotlight)
     const last = match.g.log[match.g.log.length - 1]
-    const delay = last?.player === OPP && last.card ? 1700 : d.type === 'act' ? 650 : 280
+    const delay = last?.player === 1 && last.card ? 1700 : d.type === 'act' ? 650 : 280
     const t = setTimeout(() => {
       match.next(match.aiAnswer(d))
       bump()
@@ -44,9 +87,28 @@ function useAiRunner(match: Match | null, version: number, bump: () => void) {
 
 type Sheet = { kind: 'obj'; uid: number } | { kind: 'bf'; loc: LocId } | { kind: 'acts' } | { kind: 'log' } | { kind: 'trash'; p: PID } | { kind: 'rule'; n: string } | null
 
-function Board({ match, version }: { match: Match; version: number }) {
+export interface BoardProps {
+  match: Match
+  version: number
+  seat: Seat
+  exitTo: string
+  onAnswer: (a: Parameters<Match['next']>[0]) => void
+  renderOver: (g: Game, onReview: () => void) => ReactNode
+  /** Riga in più sopra il tavolo (stato della connessione nelle partite online). */
+  notice?: ReactNode
+}
+
+export function Board(props: BoardProps) {
+  return (
+    <SeatContext.Provider value={props.seat}>
+      <BoardInner {...props} />
+    </SeatContext.Provider>
+  )
+}
+
+function BoardInner({ match, version, exitTo, onAnswer, renderOver, notice }: BoardProps) {
+  const { ME, OPP } = useSeat()
   const g = match.g
-  const bump = useGame((s) => s.bump)
   const d = match.pending
   const mine = !!d && match.isHuman(d)
   const [sheet, setSheet] = useState<Sheet>(null)
@@ -67,9 +129,8 @@ function Board({ match, version }: { match: Match; version: number }) {
   void version
 
   const answer = (a: Parameters<Match['next']>[0]) => {
-    match.next(a)
     setSheet(null)
-    bump()
+    onAnswer(a)
   }
 
   const actions = mine && d?.type === 'act' ? d.actions : []
@@ -82,10 +143,11 @@ function Board({ match, version }: { match: Match; version: number }) {
   return (
     <div className="table" style={{ '--back-main': `url(${new URL(asset('backs/main.webp'), window.location.href).href})` } as React.CSSProperties}>
       <div className="table-corner">
-        <Link to="/playground/partita" className="corner-btn" aria-label="Esci dalla partita">
+        <Link to={exitTo} className="corner-btn" aria-label="Esci dalla partita">
           ✕
         </Link>
-        <button type="button" className="corner-btn" onClick={() => setSheet({ kind: 'log' })}>
+        {notice}
+        <button type="button" className="corner-btn corner-log" onClick={() => setSheet({ kind: 'log' })}>
           Cronaca
         </button>
       </div>
@@ -115,6 +177,10 @@ function Board({ match, version }: { match: Match; version: number }) {
           <EndButton action={end} onClick={() => end && answer(end.id)} waiting={!!d && !mine && g.winner === null} />
         </div>
       </div>
+      <aside className="table-side" aria-label="Cronaca della partita">
+        <h2>Cronaca</h2>
+        <LiveLog g={g} onRule={(n) => setSheet({ kind: 'rule', n })} />
+      </aside>
       <ChainBar g={g} />
       <FanHand g={g} actionsFor={actionsFor} picked={picked} setPicked={setPicked} onDetails={openObj} run={(a) => answer(a.id)} />
 
@@ -170,13 +236,14 @@ function Board({ match, version }: { match: Match; version: number }) {
         )}
       </AnimatePresence>
       <Spotlight g={g} />
-      {g.winner !== null && !reviewing && <GameOver g={g} onReview={() => setReviewing(true)} />}
+      {g.winner !== null && !reviewing && renderOver(g, () => setReviewing(true))}
     </div>
   )
 }
 
 /** Mostra in grande ogni carta che il PC gioca o usa, come nei giochi di carte digitali. */
 function Spotlight({ g }: { g: Game }) {
+  const { OPP } = useSeat()
   const seen = useRef(g.log.length)
   const [shown, setShown] = useState<{ key: number; entry: Game['log'][number] } | null>(null)
   const n = g.log.length
@@ -238,6 +305,7 @@ function Tile({ label, onClick, actionable, dim, glow, children }: { label: stri
 }
 
 function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; onTrash: () => void; onObj: (uid: number) => void; actionsFor: (uid: number) => ActionOpt[] }) {
+  const { ME, short: themShort } = useSeat()
   const pl = g.players[p]
   const legend = g.objs.get(pl.legend)!
   const runes = pl.runes.map((u) => g.objs.get(u)!)
@@ -253,7 +321,7 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
       </Tile>
       <div className="mat-mid">
         <div className="mat-line">
-          <strong>{p === ME ? 'Tu' : 'PC'}</strong>
+          <strong>{p === ME ? 'Tu' : themShort}</strong>
           <span className="tiny strip-deck">{pl.deckName}</span>
           {pl.xp > 0 && (
             <span className="tiny strip-xp" title="XP (728)">
@@ -290,6 +358,7 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
 }
 
 function UnitChip({ g, o, onObj, actionable }: { g: Game; o: Obj; onObj: (uid: number) => void; actionable?: boolean }) {
+  const { ME } = useSeat()
   const m = might(g, o)
   const k = kw(g, o)
   const base = o.card.might ?? 0
@@ -320,11 +389,12 @@ function UnitChip({ g, o, onObj, actionable }: { g: Game; o: Obj; onObj: (uid: n
 }
 
 function BaseRow({ g, p, onObj, actionsFor }: { g: Game; p: PID; onObj: (uid: number) => void; actionsFor: (uid: number) => ActionOpt[] }) {
+  const { ME, of: themOf } = useSeat()
   const loc: LocId = p === 0 ? 'base0' : 'base1'
   const list = [...g.objs.values()].filter((o) => o.zone === 'board' && o.loc === loc)
   return (
     <div className={`base base-${p === ME ? 'me' : 'opp'}`}>
-      <span className="base-label">{p === ME ? 'La tua base' : 'Base del PC'}</span>
+      <span className="base-label">{p === ME ? 'La tua base' : `Base ${themOf}`}</span>
       <div className="base-units">
         <AnimatePresence>
           {list.map((o) => (
@@ -338,6 +408,7 @@ function BaseRow({ g, p, onObj, actionsFor }: { g: Game; p: PID; onObj: (uid: nu
 }
 
 function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: LocId; onObj: (uid: number) => void; onBf: () => void; actionsFor: (uid: number) => ActionOpt[] }) {
+  const { ME, OPP, of: themOf } = useSeat()
   const bf = g.bfs.find((b) => b.loc === loc)!
   const sd = g.showdown?.loc === loc ? g.showdown : null
   const them = friendlyAt(g, OPP, loc)
@@ -350,7 +421,7 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
       <img className="bf-art" src={cardImage(bf.card)} alt="" />
       <button type="button" className="bf-head" onClick={onBf}>
         <strong>{bfName(g, loc)}</strong>
-        <span className="tiny">{bf.controller === null ? 'libero' : bf.controller === ME ? 'tuo' : 'del PC'} · dettagli</span>
+        <span className="tiny">{bf.controller === null ? 'libero' : bf.controller === ME ? 'tuo' : themOf} · dettagli</span>
       </button>
       {sd && <span className="bf-live-tag">{sd.combat ? 'Combattimento' : 'Showdown'}</span>}
       <div className="bf-row bf-row-opp">
@@ -372,7 +443,7 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
           {faces.map((face) => (
             <button key={face.uid} type="button" className={`facedown${actionsFor(face.uid).length ? ' is-actionable' : ''}`} onClick={() => (face.controller === ME ? onObj(face.uid) : undefined)}>
               <span className="card-back facedown-back" aria-hidden />
-              {face.controller === ME ? `Nascosta: ${face.card.name}` : 'Carta nascosta del PC'}
+              {face.controller === ME ? `Nascosta: ${face.card.name}` : `Carta nascosta ${themOf}`}
             </button>
           ))}
           {gear.map((o) => (
@@ -403,16 +474,20 @@ function FanHand({
   onDetails: (uid: number) => void
   run: (a: ActionOpt) => void
 }) {
+  const { ME } = useSeat()
   const cards = g.players[ME].hand.map((u) => g.objs.get(u)!)
-  const [width, setWidth] = useState(() => Math.min(window.innerWidth, 760))
+  const wide = useWide()
+  const [width, setWidth] = useState(() => window.innerWidth)
   useEffect(() => {
-    const on = () => setWidth(Math.min(window.innerWidth, 760))
+    const on = () => setWidth(window.innerWidth)
     window.addEventListener('resize', on)
     return () => window.removeEventListener('resize', on)
   }, [])
   const n = cards.length
-  const cardW = 76
-  const step = n > 1 ? Math.min(54, (width - 28 - cardW) / (n - 1)) : 0
+  // sul computer la mano sta nella colonna del tavolo, a sinistra della cronaca
+  const room = wide ? Math.min(width - SIDE_W - 80, 1100) : Math.min(width, 760)
+  const cardW = wide ? Math.min(128, Math.max(80, window.innerHeight * 0.12)) : 76
+  const step = n > 1 ? Math.min(wide ? 90 : 54, (room - 28 - cardW) / (n - 1)) : 0
   const spread = Math.min(5, 34 / Math.max(1, n))
   const sel = picked !== null ? cards.find((o) => o.uid === picked) : undefined
   const selActs = sel ? actionsFor(sel.uid) : []
@@ -445,7 +520,7 @@ function FanHand({
               style={{ zIndex: up ? 50 : i + 1 }}
               onClick={() => onDetails(o.uid)}
               initial={{ opacity: 0, y: 160, x: 120, rotate: 20 }}
-              animate={up ? { opacity: 1, x: 0, y: -150, rotate: 0, scale: 1.9 } : { opacity: 1, x: c * step, y: Math.abs(c) * Math.abs(c) * 1.4, rotate: c * spread, scale: 1 }}
+              animate={up ? { opacity: 1, x: 0, y: wide ? -230 : -150, rotate: 0, scale: wide ? 2.1 : 1.9 } : { opacity: 1, x: c * step, y: Math.abs(c) * Math.abs(c) * 1.4, rotate: c * spread, scale: 1 }}
               exit={{ opacity: 0, y: -260, scale: 1.3 }}
               transition={{ type: 'spring', stiffness: 340, damping: 30 }}
             >
@@ -461,8 +536,9 @@ function FanHand({
 
 /** Mano dell'avversario: solo il dorso delle carte (128.4). */
 function OppHand({ n }: { n: number }) {
+  const { name: them } = useSeat()
   return (
-    <div className="opp-hand" aria-label={`Il PC ha ${n} carte in mano`}>
+    <div className="opp-hand" aria-label={`${cap(them)} ha ${n} carte in mano`}>
       {Array.from({ length: n }, (_, i) => {
         const c = i - (n - 1) / 2
         return <motion.span key={i} className="card-back" initial={false} animate={{ x: c * 16, rotate: -c * 4, y: Math.abs(c) * Math.abs(c) * 0.8 }} />
@@ -472,6 +548,7 @@ function OppHand({ n }: { n: number }) {
 }
 
 function ChainBar({ g }: { g: Game }) {
+  const { ME } = useSeat()
   if (!g.chain.length) return null
   return (
     <div className="chain-bar">
@@ -488,9 +565,10 @@ function ChainBar({ g }: { g: Game }) {
 
 /** Cosa sta succedendo: la richiesta del momento e l'ultima riga della cronaca. */
 function Banner({ g, d, mine, onLog }: { g: Game; d: Decision | null; mine: boolean; onLog: () => void }) {
+  const { name: them } = useSeat()
   let title = ''
   if (g.winner !== null) title = 'Partita finita'
-  else if (d && !mine) title = 'Il PC sta giocando…'
+  else if (d && !mine) title = `${cap(them)} sta giocando…`
   else if (d?.type === 'act')
     title =
       d.context === 'main'
@@ -519,6 +597,7 @@ function Banner({ g, d, mine, onLog }: { g: Game; d: Decision | null; mine: bool
 
 /** Il pulsante grande in basso a destra, come nei giochi di carte digitali. */
 function EndButton({ action, onClick, waiting }: { action?: ActionOpt; onClick: () => void; waiting: boolean }) {
+  const { name: them } = useSeat()
   return (
     <motion.button
       type="button"
@@ -530,7 +609,7 @@ function EndButton({ action, onClick, waiting }: { action?: ActionOpt; onClick: 
       transition={{ duration: 1.4, repeat: action ? Infinity : 0 }}
     >
       {waiting ? (
-        <span className="thinking" aria-label="Il PC sta giocando">
+        <span className="thinking" aria-label={`${cap(them)} sta giocando`}>
           <i />
           <i />
           <i />
@@ -654,11 +733,12 @@ function SheetFrame({ children, onClose }: { children: React.ReactNode; onClose:
 }
 
 function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: ActionOpt[]; run: (a: ActionOpt) => void }) {
+  const { ME, of: themOf } = useSeat()
   const location = useLocation()
   const o = g.objs.get(uid)
   if (!o) return <p className="sheet-body muted">Questa carta non è più qui.</p>
   const hiddenFromMe = o.controller !== ME && (o.zone === 'facedown' || o.zone === 'hand')
-  if (hiddenFromMe) return <p className="sheet-body muted">Carta coperta del PC.</p>
+  if (hiddenFromMe) return <p className="sheet-body muted">Carta coperta {themOf}.</p>
   const onBoard = o.zone === 'board' && /Unit/.test(o.card.type)
   const k = onBoard ? kw(g, o) : null
   const state = [
@@ -713,16 +793,17 @@ function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: Act
 }
 
 function BfSheet({ g, loc }: { g: Game; loc: LocId }) {
+  const { ME, name: them, short: themShort } = useSeat()
   const location = useLocation()
   const bf = g.bfs.find((b) => b.loc === loc)!
   const units = unitsAt(g, loc)
-  const who = (p: PID | null) => (p === null ? 'nessuno' : p === ME ? 'tu' : 'il PC')
+  const who = (p: PID | null) => (p === null ? 'nessuno' : p === ME ? 'tu' : them)
   return (
     <div className="sheet-body bf-sheet">
       <img className="bf-sheet-img" src={cardImage(bf.card)} alt={bf.card.name} />
       <h2>{bf.card.name}</h2>
       <p className="tiny">
-        Portato da {bf.owner === ME ? 'te' : 'il PC'} · controllato da {who(bf.controller)}
+        Portato da {bf.owner === ME ? 'te' : them} · controllato da {who(bf.controller)}
         {g.showdown?.loc === loc ? ` · ${g.showdown.combat ? 'combattimento' : 'showdown'} in corso` : ''}
       </p>
       {bf.card.text && (
@@ -731,7 +812,7 @@ function BfSheet({ g, loc }: { g: Game; loc: LocId }) {
         </div>
       )}
       <p className="tiny">
-        Unità qui: {units.length ? units.map((u) => `${u.card.name} (${u.controller === ME ? 'tua' : 'PC'}, ${might(g, u)})`).join(' · ') : 'nessuna'}
+        Unità qui: {units.length ? units.map((u) => `${u.card.name} (${u.controller === ME ? 'tua' : themShort}, ${might(g, u)})`).join(' · ') : 'nessuna'}
       </p>
       <p className="tiny muted">
         Chi controlla un campo all’inizio del proprio turno lo tiene e guadagna 1 punto (471.2); chi ne prende il controllo lo conquista e guadagna 1 punto (471.1).
@@ -743,7 +824,34 @@ function BfSheet({ g, loc }: { g: Game; loc: LocId }) {
   )
 }
 
+/** Cronaca nella colonna laterale del computer: le ultime righe, sempre in fondo. */
+function LiveLog({ g, onRule }: { g: Game; onRule: (n: string) => void }) {
+  const { ME, OPP } = useSeat()
+  const ref = useRef<HTMLOListElement>(null)
+  const n = g.log.length
+  useEffect(() => {
+    const el = ref.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [n])
+  return (
+    <ol className="log live-log" ref={ref}>
+      {g.log.slice(-80).map((l, i) => (
+        <li key={n - 80 + i} className={l.player === ME ? 'log-me' : l.player === OPP ? 'log-opp' : ''}>
+          <span className="log-turn">T{l.turn}</span>
+          <span>{l.text}</span>
+          {l.rule && (
+            <button type="button" className="log-rule" onClick={() => onRule(l.rule!)}>
+              {l.rule}
+            </button>
+          )}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function LogSheet({ g, onRule }: { g: Game; onRule: (n: string) => void }) {
+  const { ME, OPP } = useSeat()
   const ref = useRef<HTMLOListElement>(null)
   useEffect(() => {
     ref.current?.lastElementChild?.scrollIntoView({ block: 'end' })
@@ -770,12 +878,13 @@ function LogSheet({ g, onRule }: { g: Game; onRule: (n: string) => void }) {
 }
 
 function TrashSheet({ g, p, onObj }: { g: Game; p: PID; onObj: (uid: number) => void }) {
+  const { ME, of: themOf } = useSeat()
   const pl = g.players[p]
   const list = [...pl.trash].reverse().map((u) => g.objs.get(u)!)
   const ban = pl.banish.map((u) => g.objs.get(u)!)
   return (
     <div className="sheet-body">
-      <h2>Trash {p === ME ? 'tuo' : 'del PC'}</h2>
+      <h2>Trash {p === ME ? 'tuo' : themOf}</h2>
       <div className="pile">
         {list.map((o) => (
           <button key={o.uid} type="button" onClick={() => onObj(o.uid)}>
@@ -795,6 +904,7 @@ function TrashSheet({ g, p, onObj }: { g: Game; p: PID; onObj: (uid: number) => 
 }
 
 function GameOver({ g, onReview }: { g: Game; onReview: () => void }) {
+  const { ME, OPP } = useSeat()
   const db = useDb()
   const navigate = useNavigate()
   const start = useGame((s) => s.start)

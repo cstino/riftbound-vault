@@ -13,6 +13,13 @@ const MODES = [
     art: 'Zed, Without a Sound',
   },
   {
+    to: '/playground/online',
+    title: 'Partita online',
+    text: 'Contro un amico, ognuno dal suo dispositivo: crea una partita e dagli il codice, oppure entra con il suo.',
+    cta: 'Gioca online',
+    art: 'Vi, Destructive',
+  },
+  {
     to: '/playground/allenamento',
     title: 'Allenamento sui combattimenti',
     text: 'Combattimenti preparati con carte vere: assegni tu i danni, le regole decidono l’esito.',
@@ -28,7 +35,7 @@ export function Playground() {
       <header className="page-head">
         <div>
           <h1>Playground</h1>
-          <p>Metti in pratica le regole contro il PC.</p>
+          <p>Metti in pratica le regole contro il PC o contro un amico.</p>
         </div>
       </header>
       <div className="modes">
