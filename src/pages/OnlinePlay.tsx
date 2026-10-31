@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'motion/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useDb } from '../lib/useDb'
 import { useAuth } from '../lib/auth'
-import { cardImage } from '../lib/data'
+import { asset, cardImage } from '../lib/data'
 import { OnlineGame, cancelMatch, createMatch, deckProblems, joinMatch, myMatches, type MatchRow } from '../lib/onlineMatch'
 import type { Game } from '../lib/game/types'
 import { askConfirm } from '../components/ConfirmDialog'
+import { DeckRoster, deckColors } from '../components/DeckRoster'
+import { DomainIcon } from '../components/Icons'
 import { useDeckChoices } from './PlayVsPc'
 import { Board, type Seat } from './GameBoard'
 import './game.css'
@@ -26,6 +28,7 @@ export function OnlineLobby() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mine, setMine] = useState<MatchRow[]>([])
+  const panel = useRef<HTMLElement>(null)
 
   useEffect(() => {
     myMatches(userId).then(setMine).catch(() => setMine([]))
@@ -49,8 +52,12 @@ export function OnlineLobby() {
     }
   }
 
+  const legend = deck?.legendId ? db.byId.get(deck.legendId) : undefined
+  const champ = deck?.championId ? db.byId.get(deck.championId) : undefined
+  const colors = deck ? deckColors(deck, db) : null
+
   return (
-    <div className="setup online">
+    <div className="online-lobby">
       <Link to="/playground" className="link-more">
         ← Playground
       </Link>
@@ -80,64 +87,84 @@ export function OnlineLobby() {
         </section>
       )}
 
-      <section className="section">
-        <h2>1. Il tuo mazzo</h2>
-        {usable.length === 0 && <p className="switch-none">Nessun mazzo legale con tutte le carte nel motore di gioco.</p>}
-        <div className="auto-pick">
-          {usable.map((d) => {
-            const champ = d.championId ? db.byId.get(d.championId) : undefined
-            return (
-              <motion.button
-                key={d.id}
-                type="button"
-                className={`auto-pick-item${d.id === deckId ? ' auto-pick-on' : ''}`}
-                onClick={() => {
-                  setDeckId(d.id)
-                  setBf(null)
-                }}
-                whileTap={{ scale: 0.95 }}
-                aria-pressed={d.id === deckId}
-              >
-                {champ && <img src={cardImage(champ)} alt="" loading="lazy" />}
-                <span>{d.name}</span>
-              </motion.button>
-            )
-          })}
-        </div>
-      </section>
-
-      {deck && (
-        <section className="section">
-          <h2>2. Il tuo campo</h2>
-          <div className="online-fields">
-            <button type="button" className={`online-field${bf === null ? ' on' : ''}`} onClick={() => setBf(null)}>
-              A caso <span className="tiny muted">(487.5)</span>
-            </button>
-            {fields.map((c, i) => (
-              <button key={c.id} type="button" className={`online-field${bf === i ? ' on' : ''}`} onClick={() => setBf(i)}>
-                <img src={cardImage(c)} alt="" />
-                {c.name}
-              </button>
-            ))}
-          </div>
-          <p className="tiny muted">Scegliere il campo è la regola del Match (488.5); “a caso” è quella del Duel (487.5).</p>
+      <div className="online-pick">
+        <section className="online-roster">
+          <h2>Scegli il mazzo</h2>
+          {usable.length === 0 ? (
+            <p className="switch-none">Nessun mazzo legale con tutte le carte nel motore di gioco.</p>
+          ) : (
+            <DeckRoster
+              decks={usable}
+              db={db}
+              selected={deckId}
+              onPick={(d) => {
+                setDeckId(d.id)
+                setBf(null)
+                // sul telefono il pannello sta sotto la griglia: lo si porta in vista
+                if (!window.matchMedia('(min-width: 1100px)').matches) requestAnimationFrame(() => panel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+              }}
+            />
+          )}
         </section>
-      )}
 
-      {deck && (
-        <section className="section online-actions">
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => go(() => createMatch(deck, bf, nameOf(email)))}>
-            Crea una partita
-          </button>
-          <div className="online-join">
-            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Codice" maxLength={6} aria-label="Codice della partita" autoCapitalize="characters" />
-            <button type="button" className="btn" disabled={busy || code.trim().length !== 6} onClick={() => go(() => joinMatch(code, deck, bf, nameOf(email), userId))}>
-              Entra
-            </button>
-          </div>
-        </section>
-      )}
-      {error && <p className="assign-issue">{error}</p>}
+        <aside className="online-panel" ref={panel} style={colors ? ({ ['--c1' as string]: colors.c1, ['--c2' as string]: colors.c2 } as React.CSSProperties) : undefined}>
+          <AnimatePresence mode="wait">
+            {!deck ? (
+              <motion.div key="none" className="online-panel-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <span className="online-panel-back" style={{ backgroundImage: `url(${asset('backs/main.webp')})` }} aria-hidden />
+                <p className="muted">Scegli un mazzo per vederlo qui.</p>
+              </motion.div>
+            ) : (
+              <motion.div key={deck.id} className="online-panel-body" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.35 }}>
+                <div className="online-hero">
+                  {champ && <motion.img className="online-hero-champ" src={cardImage(champ)} alt={champ.name} initial={{ rotate: -6, y: 20 }} animate={{ rotate: -4, y: 0 }} transition={{ type: 'spring', stiffness: 180, damping: 16 }} />}
+                  {legend && <motion.img className="online-hero-legend" src={cardImage(legend)} alt={legend.name} initial={{ rotate: 10, y: 30, opacity: 0 }} animate={{ rotate: 6, y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 180, damping: 16, delay: 0.06 }} />}
+                </div>
+                <div className="online-hero-name">
+                  <strong>{deck.name}</strong>
+                  <span className="roster-doms">
+                    {colors?.doms.map((d) => (
+                      <DomainIcon key={d} domain={d} size={16} />
+                    ))}
+                    <span>{legend?.name}</span>
+                  </span>
+                </div>
+
+                <h3>Il tuo campo</h3>
+                <div className="online-fields">
+                  {fields.map((c, i) => (
+                    <button key={c.id} type="button" className={`online-field${bf === i ? ' on' : ''}`} onClick={() => setBf(i)} aria-pressed={bf === i}>
+                      <img src={cardImage(c)} alt="" />
+                      <span>{c.name}</span>
+                    </button>
+                  ))}
+                  <button type="button" className={`online-field online-field-random${bf === null ? ' on' : ''}`} onClick={() => setBf(null)} aria-pressed={bf === null}>
+                    <span className="online-field-dice" aria-hidden>
+                      ?
+                    </span>
+                    <span>A caso</span>
+                  </button>
+                </div>
+                <p className="tiny muted">Scegliere il campo è la regola del Match (488.5); “a caso” è quella del Duel (487.5).</p>
+
+                <div className="online-actions">
+                  <button type="button" className="btn btn-primary" disabled={busy} onClick={() => go(() => createMatch(deck, bf, nameOf(email)))}>
+                    Crea una partita
+                  </button>
+                  <span className="online-or tiny muted">oppure entra in quella di un amico</span>
+                  <div className="online-join">
+                    <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CODICE" maxLength={6} aria-label="Codice della partita" autoCapitalize="characters" />
+                    <button type="button" className="btn" disabled={busy || code.trim().length !== 6} onClick={() => go(() => joinMatch(code, deck, bf, nameOf(email), userId))}>
+                      Entra
+                    </button>
+                  </div>
+                </div>
+                {error && <p className="assign-issue">{error}</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </aside>
+      </div>
     </div>
   )
 }

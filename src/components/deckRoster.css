@@ -1,0 +1,174 @@
+/* Griglia di scelta dei mazzi: ritratti dei campioni con il bordo nei colori dei domini. */
+.roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 14px;
+  perspective: 900px;
+}
+
+.roster-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  padding: 2px;
+  border-radius: 16px;
+  background: linear-gradient(150deg, var(--c1), var(--c2));
+  color: inherit;
+  text-align: left;
+  transform-style: preserve-3d;
+  box-shadow: 0 14px 30px -18px var(--c1);
+  transition: box-shadow 0.25s;
+}
+
+.roster-tile:focus-visible {
+  outline: 2px solid var(--magenta);
+  outline-offset: 3px;
+}
+
+.roster-art {
+  position: absolute;
+  inset: 2px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ink-2);
+}
+
+/* si vede l'illustrazione, non il riquadro del testo della carta */
+.roster-art img {
+  width: 100%;
+  height: 160%;
+  object-fit: cover;
+  object-position: 50% 8%;
+  transform: scale(1.28) translateY(-6%);
+  transform-origin: 50% 0;
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.3s;
+  filter: saturate(0.85) brightness(0.9);
+}
+
+.roster-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 38%, rgb(10 5 24 / 0.55) 62%, rgb(10 5 24 / 0.96) 100%);
+}
+
+.roster-shine {
+  position: absolute;
+  inset: 2px;
+  border-radius: 14px;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.roster-info {
+  position: absolute;
+  inset: auto 2px 2px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 11px 11px;
+  transform: translateZ(28px);
+}
+
+.roster-info strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.05;
+}
+
+.roster-doms {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.roster-doms > span {
+  margin-left: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-check {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--magenta);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+  transform: translateZ(40px);
+}
+
+/* scelto: anello luminoso che gira nei colori dei domini */
+.roster-on {
+  background: conic-gradient(from var(--spin, 0deg), var(--c1), var(--magenta), var(--c2), var(--c1));
+  box-shadow:
+    0 0 0 3px rgb(255 62 165 / 0.3),
+    0 18px 40px -14px var(--magenta);
+  animation: roster-spin 4s linear infinite;
+}
+
+.roster-on .roster-art img {
+  filter: none;
+}
+
+@property --spin {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes roster-spin {
+  to {
+    --spin: 360deg;
+  }
+}
+
+/* solo con il mouse: zoom sull'illustrazione, riflesso e bagliore dei domini */
+@media (hover: hover) and (pointer: fine) {
+  .roster {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+
+  .roster-tile:hover {
+    box-shadow:
+      0 0 26px -4px var(--c1),
+      0 26px 50px -20px var(--c2);
+  }
+
+  .roster-tile:hover .roster-art img {
+    transform: scale(1.4) translateY(-7%);
+    filter: saturate(1.1) brightness(1.05);
+  }
+
+  .roster-tile:hover .roster-shine {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roster-on {
+    animation: none;
+  }
+
+  .roster-art img {
+    transition: none;
+  }
+}
