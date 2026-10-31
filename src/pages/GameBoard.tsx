@@ -12,6 +12,7 @@ import { RuleQuote } from '../components/Explainer'
 import { DomainIcon } from '../components/Icons'
 import { CardText } from '../components/CardText'
 import { Summon, isBigPlay } from '../components/Summon'
+import { TokenCard } from '../components/TokenCard'
 import { useVault } from '../lib/store'
 import './game.css'
 
@@ -32,6 +33,8 @@ const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 const WIDE = '(min-width: 1100px) and (min-height: 640px)'
 /** Larghezza della colonna laterale con la cronaca (game.css, --side-w). */
 const SIDE_W = 340
+/** Larghezza della barra delle azioni a sinistra della mano (game.css, --bar-w). */
+const BAR_W = 300
 function useWide() {
   const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches)
   useEffect(() => {
@@ -165,20 +168,27 @@ function BoardInner({ match, version, exitTo, onAnswer, renderOver, notice }: Bo
       <BaseRow g={g} p={ME} onObj={openObj} actionsFor={actionsFor} />
       <PlayerStrip g={g} p={ME} onTrash={() => setSheet({ kind: 'trash', p: ME })} onObj={openObj} actionsFor={actionsFor} />
       <div className="controls">
-        <Banner g={g} d={d} mine={mine} onLog={() => setSheet({ kind: 'log' })} />
-        <div className="controls-btns">
-          {move && (
-            <button type="button" className="pill pill-move" onClick={() => answer(move.id)}>
-              Muovi
-            </button>
-          )}
-          {actions.length > 1 && (
-            <button type="button" className="pill" onClick={() => setSheet({ kind: 'acts' })}>
-              Azioni {actions.length - 1}
-            </button>
-          )}
+        <div className="actionbar">
           <EndButton action={end} onClick={() => end && answer(end.id)} waiting={!!d && !mine && g.winner === null} />
+          {(move || actions.length > 1) && (
+            <div className="actionbar-pills">
+              {move && (
+                <motion.button type="button" className="act-pill act-pill-move" onClick={() => answer(move.id)} whileTap={{ scale: 0.94 }} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}>
+                  <PillIcon kind="move" />
+                  Muovi
+                </motion.button>
+              )}
+              {actions.length > 1 && (
+                <motion.button type="button" className="act-pill" onClick={() => setSheet({ kind: 'acts' })} whileTap={{ scale: 0.94 }} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}>
+                  <PillIcon kind="acts" />
+                  Azioni
+                  <span className="act-pill-count">{actions.length - 1}</span>
+                </motion.button>
+              )}
+            </div>
+          )}
         </div>
+        <Banner g={g} d={d} mine={mine} onLog={() => setSheet({ kind: 'log' })} />
       </div>
       <aside className="table-side" aria-label="Cronaca della partita">
         <h2>Cronaca</h2>
@@ -340,7 +350,12 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
             {pl.runeDeck.length}
           </span>
           {runes.map((r) => (
-            <span key={r.uid} className={`rune${r.exhausted ? ' rune-off' : ''}`} title={r.card.name}>
+            <span
+              key={r.uid}
+              className={`rune${r.exhausted ? ' rune-off' : ''}`}
+              style={{ ['--dc' as string]: `var(--${r.card.domains[0].toLowerCase()})` }}
+              title={`${r.card.name}${r.exhausted ? ' (esausta)' : ''}`}
+            >
               <DomainIcon domain={r.card.domains[0]} size={12} />
             </span>
           ))}
@@ -363,6 +378,7 @@ function PlayerStrip({ g, p, onTrash, onObj, actionsFor }: { g: Game; p: PID; on
 }
 
 function UnitChip({ g, o, onObj, actionable }: { g: Game; o: Obj; onObj: (uid: number) => void; actionable?: boolean }) {
+  const db = useDb()
   const { ME } = useSeat()
   const m = might(g, o)
   const k = kw(g, o)
@@ -380,7 +396,7 @@ function UnitChip({ g, o, onObj, actionable }: { g: Game; o: Obj; onObj: (uid: n
       exit={{ opacity: 0, scale: 0.4 }}
       transition={{ type: 'spring', stiffness: 380, damping: 28 }}
     >
-      {o.token ? <span className="token-face">{o.card.name}</span> : <img src={cardImage(o.card)} alt={o.card.name} loading="lazy" />}
+      {o.token ? <TokenCard card={o.card} db={db} /> : <img src={cardImage(o.card)} alt={o.card.name} loading="lazy" />}
       <span className={`chip-might${m > base ? ' up' : m < base ? ' down' : ''}`}>{m}</span>
       {o.damage > 0 && <span className="chip-dmg">-{o.damage}</span>}
       <span className="chip-flags">
@@ -491,7 +507,7 @@ function FanHand({
   }, [])
   const n = cards.length
   // sul computer la mano sta nella colonna del tavolo, a sinistra della cronaca
-  const room = wide ? Math.min(width - SIDE_W - 80, 1100) : Math.min(width, 760)
+  const room = wide ? Math.min(width - SIDE_W - BAR_W - 80, 1100) : Math.min(width, 760)
   const cardW = wide ? Math.min(128, Math.max(80, window.innerHeight * 0.12)) : 76
   const step = n > 1 ? Math.min(wide ? 90 : 54, (room - 28 - cardW) / (n - 1)) : 0
   const spread = Math.min(5, 34 / Math.max(1, n))
@@ -601,29 +617,32 @@ function Banner({ g, d, mine, onLog }: { g: Game; d: Decision | null; mine: bool
   )
 }
 
-/** Il pulsante grande in basso a destra, come nei giochi di carte digitali. */
+/** Il pulsante grande della barra delle azioni: anello luminoso che gira quando tocca a te. */
 function EndButton({ action, onClick, waiting }: { action?: ActionOpt; onClick: () => void; waiting: boolean }) {
   const { name: them } = useSeat()
   return (
-    <motion.button
-      type="button"
-      className={`end-btn${action ? ' end-on' : ''}`}
-      disabled={!action}
-      onClick={onClick}
-      whileTap={{ scale: 0.92 }}
-      animate={action ? { boxShadow: ['0 0 0 0 rgb(255 62 165 / 0.7)', '0 0 0 12px rgb(255 62 165 / 0)'] } : {}}
-      transition={{ duration: 1.4, repeat: action ? Infinity : 0 }}
-    >
-      {waiting ? (
-        <span className="thinking" aria-label={`${cap(them)} sta giocando`}>
-          <i />
-          <i />
-          <i />
-        </span>
-      ) : (
-        (action?.label ?? '—')
-      )}
+    <motion.button type="button" className={`end-btn${action ? ' end-on' : ''}${waiting ? ' end-wait' : ''}`} disabled={!action} onClick={onClick} whileTap={{ scale: 0.92 }} whileHover={action ? { scale: 1.05 } : undefined}>
+      <span className="end-ring" aria-hidden />
+      <span className="end-core">
+        {waiting ? (
+          <span className="thinking" aria-label={`${cap(them)} sta giocando`}>
+            <i />
+            <i />
+            <i />
+          </span>
+        ) : (
+          (action?.label ?? '—')
+        )}
+      </span>
     </motion.button>
+  )
+}
+
+function PillIcon({ kind }: { kind: 'move' | 'acts' }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      {kind === 'move' ? <path d="M4 12h13M13 6l6 6-6 6" /> : <path d="M12 3l2.2 5.3L20 9l-4.3 3.8L17 19l-5-3-5 3 1.3-6.2L4 9l5.8-.7z" />}
+    </svg>
   )
 }
 
@@ -739,6 +758,7 @@ function SheetFrame({ children, onClose }: { children: React.ReactNode; onClose:
 }
 
 function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: ActionOpt[]; run: (a: ActionOpt) => void }) {
+  const db = useDb()
   const { ME, of: themOf } = useSeat()
   const location = useLocation()
   const o = g.objs.get(uid)
@@ -758,7 +778,7 @@ function ObjSheet({ g, uid, actions, run }: { g: Game; uid: number; actions: Act
   ].filter(Boolean)
   return (
     <div className="sheet-body obj-sheet">
-      {o.token ? <span className="token-face token-big">{o.card.name}</span> : <img className="obj-img" src={cardImage(o.card)} alt={o.card.name} />}
+      {o.token ? <TokenCard card={o.card} db={db} big /> : <img className="obj-img" src={cardImage(o.card)} alt={o.card.name} />}
       <div className="obj-info">
         <h2>{o.card.name}</h2>
         {onBoard && (

@@ -287,15 +287,36 @@
 .rune {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 0.1);
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  /* colore del dominio in gradiente che scorre; la runa esausta si spegne */
+  background: linear-gradient(135deg, var(--dc), color-mix(in srgb, var(--dc) 55%, #fff) 50%, var(--dc)) 0 0 / 220% 220%;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 0 10px -2px var(--dc);
+  animation: rune-flow 3.2s ease-in-out infinite alternate;
+  transition:
+    filter 0.35s,
+    opacity 0.35s,
+    box-shadow 0.35s;
+}
+
+.rune .domain-icon {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgb(0 0 0 / 0.4));
+}
+
+@keyframes rune-flow {
+  to {
+    background-position: 100% 100%;
+  }
 }
 
 .rune-off {
-  opacity: 0.32;
-  transform: rotate(20deg);
+  animation: none;
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.6;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
 }
 
 .pool {
@@ -1145,8 +1166,8 @@ body.no-scroll {
 }
 
 .table .rune {
-  width: 17px;
-  height: 17px;
+  width: 19px;
+  height: 19px;
 }
 
 .champ-ready {
@@ -1183,8 +1204,8 @@ body.no-scroll {
 
 .controls {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
 }
 
@@ -1215,51 +1236,6 @@ body.no-scroll {
 
 .banner-mine {
   border-color: rgb(255 62 165 / 0.6);
-}
-
-.controls-btns {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pill {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 800;
-  background: rgb(255 255 255 / 0.07);
-  border: 1px solid var(--line-strong);
-}
-
-.pill-move {
-  border-color: var(--cyan);
-  color: var(--cyan);
-}
-
-.end-btn {
-  width: 74px;
-  height: 74px;
-  margin-top: -18px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  padding: 8px;
-  font-family: var(--font-display);
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1.1;
-  text-align: center;
-  color: var(--text-3);
-  background: radial-gradient(circle at 50% 30%, var(--ink-3), var(--ink-1));
-  border: 2px solid var(--line-strong);
-}
-
-.end-on {
-  color: #fff;
-  background: radial-gradient(circle at 50% 30%, #ff6cbc, var(--magenta-deep));
-  border-color: #ffb1da;
 }
 
 .table .chain-bar {
@@ -1965,6 +1941,8 @@ body.no-scroll {
 
   .table {
     --side-w: 340px;
+    /* spazio della barra delle azioni a sinistra della mano */
+    --bar-w: 300px;
     width: 100%;
     max-width: 1680px;
     grid-template-columns: minmax(0, 1fr) var(--side-w);
@@ -2011,26 +1989,33 @@ body.no-scroll {
     grid-area: mymat;
   }
 
+  /* la barra delle azioni va in basso a sinistra, accanto alla mano; la richiesta del momento resta a destra */
   .table > .controls {
+    display: contents;
+  }
+
+  .table .actionbar {
+    grid-area: fan;
+    z-index: 25;
+    align-self: center;
+    justify-self: start;
+    flex-direction: row;
+    gap: 14px;
+  }
+
+  .table .banner {
     grid-area: controls;
-    grid-template-columns: 1fr;
-    align-content: start;
-    padding-top: 10px;
+    align-self: start;
+    margin-top: 10px;
   }
 
   .table > .fan {
     grid-area: fan;
-  }
-
-  .controls-btns {
-    justify-content: flex-end;
+    margin-left: var(--bar-w);
   }
 
   .end-btn {
-    width: 92px;
-    height: 92px;
-    margin-top: 0;
-    font-size: 14px;
+    --end: 108px;
   }
 
   .banner strong {
@@ -2096,8 +2081,9 @@ body.no-scroll {
   }
 
   .table .rune {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
   }
 
   .table .unit-chip {
@@ -2149,4 +2135,174 @@ body.no-scroll {
   color: var(--warn);
   font-weight: 700;
   text-wrap: balance;
+}
+
+/* ---------------------------------------------------------------- barra delle azioni
+   In basso a sinistra: il pulsante grande (Fine turno / Passa) con un anello che gira quando tocca
+   a te, e accanto Muovi e Azioni come pillole con bordo sfumato. */
+.actionbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionbar-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.end-btn {
+  --end: 76px;
+  position: relative;
+  flex: none;
+  width: var(--end);
+  height: var(--end);
+  margin-top: -14px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: none;
+  font-family: var(--font-display);
+  font-size: calc(var(--end) * 0.15);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.end-btn:disabled {
+  cursor: default;
+}
+
+.end-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from var(--end-spin, 0deg), rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.12));
+  /* solo l'anello: il centro lo copre end-core */
+  mask: radial-gradient(circle, transparent 62%, #000 63%);
+}
+
+.end-core {
+  position: absolute;
+  inset: 5px;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border-radius: 50%;
+  text-align: center;
+  background: radial-gradient(circle at 50% 30%, var(--ink-3), var(--ink-1));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+.end-on {
+  color: #fff;
+}
+
+.end-on .end-ring {
+  background: conic-gradient(from var(--end-spin, 0deg), var(--magenta), #ffb1da, var(--violet), var(--cyan), var(--magenta));
+  animation: end-spin 2.6s linear infinite;
+  filter: drop-shadow(0 0 10px rgb(255 62 165 / 0.7));
+}
+
+.end-on .end-core {
+  background: radial-gradient(circle at 50% 28%, #ff7cc4, var(--magenta) 45%, var(--magenta-deep));
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.35),
+    inset 0 -6px 14px rgb(0 0 0 / 0.25),
+    0 10px 30px -8px var(--magenta);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+.end-wait .end-ring {
+  background: conic-gradient(from var(--end-spin, 0deg), var(--cyan), transparent 40%, var(--cyan));
+  animation: end-spin 1.4s linear infinite;
+  opacity: 0.7;
+}
+
+@property --end-spin {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes end-spin {
+  to {
+    --end-spin: 360deg;
+  }
+}
+
+.act-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 14px 0 11px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  /* bordo sfumato: lo sfondo scuro sta nel padding, il gradiente nel bordo */
+  background:
+    linear-gradient(180deg, rgb(40 24 84 / 0.95), rgb(18 10 40 / 0.95)) padding-box,
+    linear-gradient(135deg, var(--violet), var(--magenta)) border-box;
+  box-shadow: 0 8px 20px -10px rgb(140 91 255 / 0.8);
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s;
+}
+
+.act-pill-move {
+  background:
+    linear-gradient(180deg, rgb(20 50 70 / 0.95), rgb(10 22 40 / 0.95)) padding-box,
+    linear-gradient(135deg, var(--cyan), #7af0c8) border-box;
+  color: #bff6ff;
+  box-shadow: 0 8px 20px -10px rgb(59 216 242 / 0.8);
+}
+
+.act-pill-count {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #fff;
+  background: var(--magenta);
+}
+
+/* telefono: pillole più basse per non allungare la riga dei comandi */
+@media (max-width: 1099px) {
+  .act-pill {
+    height: 32px;
+    padding: 0 10px 0 8px;
+    font-size: 13px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .act-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px -10px rgb(255 62 165 / 0.9);
+  }
+
+  .act-pill-move:hover {
+    box-shadow: 0 12px 26px -10px rgb(59 216 242 / 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rune,
+  .end-on .end-ring,
+  .end-wait .end-ring {
+    animation: none;
+  }
 }
