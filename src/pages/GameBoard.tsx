@@ -11,6 +11,7 @@ import type { ActionOpt, Decision, Game, LocId, Obj, PID } from '../lib/game/typ
 import { RuleQuote } from '../components/Explainer'
 import { DomainIcon } from '../components/Icons'
 import { CardText } from '../components/CardText'
+import { Summon, isBigPlay } from '../components/Summon'
 import { useVault } from '../lib/store'
 import './game.css'
 
@@ -76,7 +77,9 @@ function useAiRunner(match: Match | null, version: number, bump: () => void) {
     if (!match || !d || match.isHuman(d)) return
     // dopo una carta giocata dal PC si aspetta di più, per lasciarla vedere (Spotlight)
     const last = match.g.log[match.g.log.length - 1]
-    const delay = last?.player === 1 && last.card ? 1700 : d.type === 'act' ? 650 : 280
+    // dopo un'evocazione si aspetta che finisca (Summon, circa 2,9 s)
+    const big = !!last?.card && last.played != null && isBigPlay(last.card)
+    const delay = big ? 3000 : last?.player === 1 && last.card ? 1700 : d.type === 'act' ? 650 : 280
     const t = setTimeout(() => {
       match.next(match.aiAnswer(d))
       bump()
@@ -236,6 +239,7 @@ function BoardInner({ match, version, exitTo, onAnswer, renderOver, notice }: Bo
         )}
       </AnimatePresence>
       <Spotlight g={g} />
+      <Summon g={g} />
       {g.winner !== null && !reviewing && renderOver(g, () => setReviewing(true))}
     </div>
   )
@@ -250,7 +254,8 @@ function Spotlight({ g }: { g: Game }) {
   useEffect(() => {
     const fresh = g.log.slice(seen.current).map((entry, i) => ({ key: seen.current + i, entry }))
     seen.current = g.log.length
-    const hit = fresh.filter((x) => x.entry.player === OPP && x.entry.card && !x.entry.card.id.startsWith('token')).pop()
+    // le carte importanti hanno già l'evocazione (Summon)
+    const hit = fresh.filter((x) => x.entry.player === OPP && x.entry.card && !x.entry.card.id.startsWith('token') && !(x.entry.played != null && isBigPlay(x.entry.card))).pop()
     if (hit) setShown(hit)
   }, [n, g])
   // il timer dipende solo dalla carta mostrata: nuove righe della cronaca non lo annullano
@@ -366,6 +371,7 @@ function UnitChip({ g, o, onObj, actionable }: { g: Game; o: Obj; onObj: (uid: n
     <motion.button
       layout
       layoutId={`obj-${o.card.id}-${o.uid}`}
+      data-uid={o.uid}
       type="button"
       className={`unit-chip${o.exhausted ? ' is-exhausted' : ''}${o.empowered ? ' is-empowered' : ''}${o.controller === ME ? ' is-mine' : ' is-theirs'}${actionable ? ' is-actionable' : ''}`}
       onClick={() => onObj(o.uid)}
@@ -447,7 +453,7 @@ function BattlefieldTile({ g, loc, onObj, onBf, actionsFor }: { g: Game; loc: Lo
             </button>
           ))}
           {gear.map((o) => (
-            <button key={o.uid} type="button" onClick={() => onObj(o.uid)}>
+            <button key={o.uid} type="button" data-uid={o.uid} onClick={() => onObj(o.uid)}>
               {o.card.name}
             </button>
           ))}

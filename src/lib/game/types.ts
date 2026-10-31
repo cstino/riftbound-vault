@@ -146,6 +146,8 @@ export interface LogEntry {
   player?: PID
   /** Carta giocata o usata, per mostrarla in grande. */
   card?: Card
+  /** Carta appena giocata (uid sulla board o sulla catena), per l'effetto di evocazione. */
+  played?: number
 }
 
 export interface ActionOpt {

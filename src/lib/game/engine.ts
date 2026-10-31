@@ -1594,6 +1594,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       p,
       perm.card,
     )
+    g.log[g.log.length - 1].played = perm.uid
     applyContested(g, perm)
     if (isGear(perm) && !perm.token) g.turnFlags.add(`gear-${p}`)
     if (impl.play) queueTrig(g, impl.play, perm, p, { paid: ctx.paid, hiddenAt, showed: ctx.data.showed })
@@ -1622,6 +1623,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       resolve: () => (impl.resolve ? impl.resolve(g, ctx) : noop()),
     })
     log(g, `${pname(g, p)} gioca ${o.card.name}${srcLabel}.`, src === 'trash' ? '829.1.b' : '359.3', p, o.card)
+    g.log[g.log.length - 1].played = onChain.uid
   }
   return true
 }
