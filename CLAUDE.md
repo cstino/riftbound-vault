@@ -28,6 +28,7 @@
 ## Account
 - Login con Supabase (`src/lib/supabase.ts`, `src/lib/auth.tsx`): nessuna pagina si apre senza account e non esiste registrazione; gli utenti li crea l'amministratore dal pannello Supabase (Authentication → Users), con le registrazioni disattivate.
 - Collezione e mazzi di ogni utente stanno nella tabella `vault` (`supabase/schema.sql`, protetta da Row Level Security); il browser ne tiene una copia per account in IndexedDB (`src/lib/sync.ts`). La versione online vince al caricamento; poi ogni modifica viene salvata online.
+- Collezione condivisa (`src/lib/shared.ts`, tabelle `vault_members` e `shared_vault`): gli account dello stesso gruppo hanno un'unica collezione e gli stessi mazzi posseduti (quelli con la scatola); i mazzi personali restano nella riga `vault` di ognuno. Al salvataggio le modifiche si uniscono all'ultima versione online (quantità come differenze, un mazzo cambiato qui vince) con un aggiornamento condizionato su `updated_at`; tornando sull'app si prendono le modifiche degli altri. I gruppi li gestisce l'amministratore in `vault_members`.
 - URL e chiave publishable del progetto sono in `src/lib/supabase.ts` (sono pubblici per natura); le variabili `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` li sovrascrivono (vedi `.env.example`). Mai la chiave `service_role` o `sb_secret_` nell'app o nel repository.
 
 ## UI
