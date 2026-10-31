@@ -82,6 +82,8 @@ export interface CardImpl {
   /** Sconti sul costo (356.4). */
   discount?: (g: Game, p: PID, self: Obj) => { energy?: number; power?: Domain[] }
   flow?: Cost
+  /** "This can't be countered". */
+  uncounterable?: boolean
   /** 820: costo aggiuntivo per ripetere l'effetto. */
   repeat?: { energy?: number; power?: number; discard?: number }
   /** Per le magie: esiste almeno una scelta valida. */

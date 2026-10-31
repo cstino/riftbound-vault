@@ -128,6 +128,8 @@ export interface ChainItem {
   card?: number
   /** Giocata con Flow: viene esiliata invece di andare nel trash (829.1.b.1). */
   flow?: boolean
+  /** "This can't be countered": il testo della carta vince sulla regola del Counter (002, 426). */
+  uncounterable?: boolean
   resolve: () => Gen
 }
 

@@ -93,7 +93,8 @@ export function validateDeck(deck: Deck, db: CardDb): Issue[] {
   for (const { card, qty } of byName.values()) {
     if (isUnique(card) && qty > 1) {
       issues.push({ level: 'error', rule: '825.3.a', text: `${card.name} è Unique: puoi averne una sola copia (ne hai ${qty}).` })
-    } else if (qty > MAX_COPIES) {
+    } else if (qty > MAX_COPIES && !/any number of cards named/i.test(card.text ?? '')) {
+      // 002: il testo della carta vince sulla regola (Spiderling: "Your deck can have any number of cards named Spiderling")
       issues.push({ level: 'error', rule: '103.3.b', text: `${card.name}: massimo ${MAX_COPIES} copie con lo stesso nome (ne hai ${qty}).` })
     }
   }

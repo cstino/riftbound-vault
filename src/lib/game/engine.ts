@@ -1507,7 +1507,8 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       const r = yield* choose(g, p, `${o.card.name}: Show Off ${so.label}? (puoi non mostrare nulla)`, cands.map((x) => ({ label: `${x.card.name}${x.zone === 'hand' ? ' (dalla mano)' : ''}`, uid: x.uid, ai: (x.card.power ?? 0) + (x.card.energy ?? 0) / 10 })), 0, 1, { rule: '832.1.c' })
       if (r?.length) {
         const shown = cands[r[0]]
-        ctx.data.showed = { name: shown.card.name, energy: shown.card.energy ?? 0, power: shown.card.power ?? 0 } // 832.1.d.1
+        // 832.1.d.1; la Might è quella attuale se la carta è sulla board, stampata se è in mano
+        ctx.data.showed = { name: shown.card.name, energy: shown.card.energy ?? 0, power: shown.card.power ?? 0, might: shown.zone === 'board' ? might(g, shown) : (shown.card.might ?? 0) }
         log(g, `${pname(g, p)} mostra ${shown.card.name} (Show Off).`, '832.1.c', p)
       }
     }
@@ -1620,6 +1621,7 @@ export function* playCard(g: Game, p: PID, o: Obj, src: PlaySource, opts: { limi
       label: o.card.name,
       card: onChain.uid,
       flow: src === 'trash',
+      uncounterable: impl.uncounterable,
       resolve: () => (impl.resolve ? impl.resolve(g, ctx) : noop()),
     })
     log(g, `${pname(g, p)} gioca ${o.card.name}${srcLabel}.`, src === 'trash' ? '829.1.b' : '359.3', p, o.card)
@@ -1771,6 +1773,10 @@ export function attach(g: Game, gear: Obj, u: Obj) {
 export function counter(g: Game, id: number) {
   const i = g.chain.findIndex((c) => c.id === id)
   if (i < 0) return
+  if (g.chain[i].uncounterable) {
+    log(g, `${g.chain[i].label} non può essere annullata.`, '002', g.chain[i].controller)
+    return
+  }
   const [item] = g.chain.splice(i, 1)
   log(g, `${item.label} viene annullata (Counter).`, '426.1.a', item.controller)
   const c = item.card !== undefined ? g.objs.get(item.card) : undefined
