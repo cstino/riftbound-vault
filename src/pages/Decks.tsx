@@ -6,15 +6,15 @@ import { cardImage } from '../lib/data'
 import { countOf, deckOverall, emptyDeck, validateDeck } from '../lib/deck'
 import { useMeta } from '../lib/useMeta'
 import { DomainIcon } from '../components/Icons'
+import { deckColors } from '../components/DeckRoster'
+import { useTilt } from '../lib/useTilt'
+import type { Deck } from '../lib/types'
 import { ownedCoverage } from './deckUtils'
 import './decks.css'
 
 export function Decks() {
-  const db = useDb()
   const decks = useVault((s) => s.decks)
-  const owned = useVault((s) => s.owned)
   const saveDeck = useVault((s) => s.saveDeck)
-  const meta = useMeta()
   const navigate = useNavigate()
 
   function create() {
@@ -41,47 +41,66 @@ export function Decks() {
       </header>
 
       <div className="deck-list">
-        {decks.map((d, i) => {
-          const legend = d.legendId ? db.byId.get(d.legendId) : undefined
-          const champ = d.championId ? db.byId.get(d.championId) : undefined
-          const issues = validateDeck(d, db)
-          const cov = ownedCoverage(d, db, owned, decks)
-          const ovr = meta ? deckOverall(d, db, meta) : null
-          return (
-            <motion.div key={d.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}>
-              <Link to={`/mazzi/${d.id}`} className="deck-card">
-                <div className="deck-card-art">
-                  {champ ? <img src={cardImage(champ)} alt="" loading="lazy" /> : <span className="deck-card-placeholder">?</span>}
-                </div>
-                <div className="deck-card-body">
-                  <div className="deck-card-title">
-                    <h2>{d.name}</h2>
-                    {ovr && (
-                      <span className="ovr-badge" title={`Overall: ${Math.round(ovr.expected * 100)}% di vittorie attese nei tornei`}>
-                        {ovr.overall}
-                      </span>
-                    )}
-                    {d.preset && <span className="tiny">Precostruito</span>}
-                  </div>
-                  <p className="muted">{legend ? legend.name : 'Legend da scegliere'}</p>
-                  <p className="deck-card-domains">
-                    {legend?.domains.map((dm) => (
-                      <DomainIcon key={dm} domain={dm} size={20} />
-                    ))}
-                  </p>
-                  <p className="deck-card-stats">
-                    <span>{countOf(d.main)} carte</span>
-                    <span className={issues.length ? 'todo' : 'ok'}>{issues.length ? `${issues.length} da sistemare` : 'Legale'}</span>
-                    <span>
-                      Possiedi {cov.have}/{cov.need}
-                    </span>
-                  </p>
-                </div>
-              </Link>
-            </motion.div>
-          )
-        })}
+        {decks.map((d, i) => (
+          <motion.div key={d.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05, ease: [0.22, 1, 0.36, 1] }}>
+            <DeckCard deck={d} />
+          </motion.div>
+        ))}
       </div>
     </div>
+  )
+}
+
+/** Copertina di un mazzo: illustrazione del campione, overall, Legend, domini e tre indicatori. */
+function DeckCard({ deck }: { deck: Deck }) {
+  const db = useDb()
+  const decks = useVault((s) => s.decks)
+  const owned = useVault((s) => s.owned)
+  const meta = useMeta()
+  const tilt = useTilt(6)
+  const { legend, doms, c1, c2 } = deckColors(deck, db)
+  const champ = deck.championId ? db.byId.get(deck.championId) : undefined
+  const issues = validateDeck(deck, db)
+  const cov = ownedCoverage(deck, db, owned, decks)
+  const ovr = meta ? deckOverall(deck, db, meta) : null
+  const n = countOf(deck.main)
+  const title = legend?.name.split(' - ')[1] ?? legend?.name
+  return (
+    <motion.div className="deck-card-wrap" style={tilt.style} {...tilt.handlers} whileHover={{ y: -6 }}>
+      <Link to={`/mazzi/${deck.id}`} className="deck-card" style={{ ['--c1' as string]: c1, ['--c2' as string]: c2 }}>
+        <span className="deck-card-art">
+          {champ ? <img src={cardImage(champ)} alt="" loading="lazy" draggable={false} /> : <span className="deck-card-placeholder">?</span>}
+        </span>
+        <motion.span className="deck-card-shine" style={{ background: tilt.shine }} aria-hidden />
+        {deck.preset && <span className="deck-card-chip">Precostruito</span>}
+        {ovr && (
+          <span className="deck-card-ovr" title={`Overall: ${Math.round(ovr.expected * 100)}% di vittorie attese nei tornei`}>
+            <strong>{ovr.overall}</strong>
+            <small>OVR</small>
+          </span>
+        )}
+        <span className="deck-card-body">
+          <span className="deck-card-name">{deck.name}</span>
+          <span className="deck-card-legend">
+            {doms.map((dm) => (
+              <DomainIcon key={dm} domain={dm} size={16} />
+            ))}
+            <span>{title ?? 'Legend da scegliere'}</span>
+          </span>
+          <span className="deck-card-stats">
+            <span className={n === 40 ? 'stat' : 'stat stat-warn'}>{n}/40 carte</span>
+            <span className={issues.length ? 'stat stat-warn' : 'stat stat-ok'}>{issues.length ? `${issues.length} da sistemare` : 'Legale'}</span>
+          </span>
+          <span className="deck-card-own" title={`Possiedi ${cov.have} carte su ${cov.need}`}>
+            <span className="deck-card-own-bar">
+              <span style={{ width: `${cov.need ? (100 * cov.have) / cov.need : 0}%` }} />
+            </span>
+            <span className="tiny">
+              Possiedi {cov.have}/{cov.need}
+            </span>
+          </span>
+        </span>
+      </Link>
+    </motion.div>
   )
 }

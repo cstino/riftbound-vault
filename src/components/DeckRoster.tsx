@@ -1,5 +1,5 @@
-import type { PointerEvent } from 'react'
-import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react'
+import { motion } from 'motion/react'
+import { useTilt } from '../lib/useTilt'
 import { cardImage } from '../lib/data'
 import type { CardDb } from '../lib/data'
 import type { Deck } from '../lib/types'
@@ -33,42 +33,21 @@ export function DeckRoster({ decks, db, selected, onPick }: { decks: Deck[]; db:
 function RosterTile({ deck, db, on, onPick }: { deck: Deck; db: CardDb; on: boolean; onPick: () => void }) {
   const { legend, doms, c1, c2 } = deckColors(deck, db)
   const champ = deck.championId ? db.byId.get(deck.championId) : undefined
-  // posizione del puntatore sulla copertina, da 0 a 1
-  const px = useMotionValue(0.5)
-  const py = useMotionValue(0.5)
-  const spring = { stiffness: 260, damping: 22 }
-  const rotateY = useSpring(useTransform(px, [0, 1], [-11, 11]), spring)
-  const rotateX = useSpring(useTransform(py, [0, 1], [9, -9]), spring)
-  const shineX = useTransform(px, [0, 1], ['0%', '100%'])
-  const shineY = useTransform(py, [0, 1], ['0%', '100%'])
-  const shine = useMotionTemplate`radial-gradient(circle at ${shineX} ${shineY}, rgb(255 255 255 / 0.28), transparent 55%)`
-
-  const still = useReducedMotion()
-  const move = (e: PointerEvent<HTMLButtonElement>) => {
-    if (e.pointerType !== 'mouse' || still) return
-    const r = e.currentTarget.getBoundingClientRect()
-    px.set((e.clientX - r.left) / r.width)
-    py.set((e.clientY - r.top) / r.height)
-  }
-  const leave = () => {
-    px.set(0.5)
-    py.set(0.5)
-  }
+  const tilt = useTilt(11)
 
   return (
     <motion.button
       type="button"
       className={`roster-tile${on ? ' roster-on' : ''}`}
-      style={{ rotateX, rotateY, ['--c1' as string]: c1, ['--c2' as string]: c2 }}
-      onPointerMove={move}
-      onPointerLeave={leave}
+      style={{ ...tilt.style, ['--c1' as string]: c1, ['--c2' as string]: c2 }}
+      {...tilt.handlers}
       onClick={onPick}
       whileHover={{ y: -6, scale: 1.03 }}
       whileTap={{ scale: 0.97 }}
       aria-pressed={on}
     >
       <span className="roster-art">{champ && <img src={cardImage(champ)} alt="" loading="lazy" draggable={false} />}</span>
-      <motion.span className="roster-shine" style={{ background: shine }} aria-hidden />
+      <motion.span className="roster-shine" style={{ background: tilt.shine }} aria-hidden />
       <span className="roster-info">
         <strong>{deck.name}</strong>
         <span className="roster-doms">
